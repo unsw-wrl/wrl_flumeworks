@@ -233,8 +233,8 @@ function iconButton(kind, label, disabled = false) {
 
 function renderConditionRows(conditions, scale) {
   const model = conditionDisplayMode === "model";
-  $("hsHeading").textContent = model ? "Target Hs (mm)" : "Target Hs (m)";
-  $("tpHeading").textContent = model ? "Target Tp — model (s)" : "Target Tp — prototype (s)";
+  $("hsHeading").innerHTML = model ? "Target H<sub>s</sub> (mm)" : "Target H<sub>s</sub> (m)";
+  $("tpHeading").innerHTML = model ? "Target T<sub>p</sub> — model (s)" : "Target T<sub>p</sub> — prototype (s)";
   $("waterHeading").textContent = model ? "Water level (mm)" : "Water level (m AHD)";
   $("depthHeading").textContent = model ? "Wave stats depth (mm)" : "Wave stats depth (m AHD)";
   const rows = $("conditionRows"); rows.replaceChildren(); $("conditionEmpty").hidden = conditions.length > 0;
@@ -428,12 +428,27 @@ $("waveConditionsCsv").addEventListener("change", async event => {
   } catch (error) { setStatus(error.message, "error"); }
 });
 
+function closeInfoPopovers() {
+  document.querySelectorAll(".info-popover").forEach(popover => { popover.hidden = true; popover.classList.remove("table-info-popover"); popover.removeAttribute("style"); });
+  document.querySelectorAll(".info-button").forEach(item => item.setAttribute("aria-expanded", "false"));
+}
+
+function positionTableInfoPopover(button, popover) {
+  const buttonBox = button.getBoundingClientRect(), width = Math.min(390, window.innerWidth - 32);
+  popover.classList.add("table-info-popover"); popover.style.width = `${width}px`; popover.style.left = `${Math.max(16, Math.min(buttonBox.right - width, window.innerWidth - width - 16))}px`;
+  let top = buttonBox.bottom + 8;
+  if (top + popover.offsetHeight > window.innerHeight - 16) top = Math.max(16, buttonBox.top - popover.offsetHeight - 8);
+  popover.style.top = `${top}px`;
+}
+
 document.querySelectorAll(".info-button").forEach(button => button.addEventListener("click", event => {
   event.stopPropagation(); const target = $(button.getAttribute("aria-controls")), open = target.hidden;
-  document.querySelectorAll(".info-popover").forEach(popover => { popover.hidden = true; }); document.querySelectorAll(".info-button").forEach(item => item.setAttribute("aria-expanded", "false"));
-  target.hidden = !open; button.setAttribute("aria-expanded", String(open));
+  closeInfoPopovers();
+  if (open) { target.hidden = false; button.setAttribute("aria-expanded", "true"); if (button.closest(".conditions-table")) positionTableInfoPopover(button, target); }
 }));
-document.addEventListener("click", () => { document.querySelectorAll(".info-popover").forEach(popover => { popover.hidden = true; }); document.querySelectorAll(".info-button").forEach(item => item.setAttribute("aria-expanded", "false")); });
+document.addEventListener("click", closeInfoPopovers);
+document.querySelector(".conditions-table").addEventListener("scroll", closeInfoPopovers);
+window.addEventListener("resize", closeInfoPopovers);
 document.querySelectorAll(".info-popover").forEach(popover => popover.addEventListener("click", event => event.stopPropagation()));
 
 $("saveProject").addEventListener("click", saveProject);
