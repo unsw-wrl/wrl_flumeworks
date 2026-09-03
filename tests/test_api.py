@@ -71,14 +71,31 @@ def test_project_model_design_save_and_backup_workflow(tmp_path: Path) -> None:
         assert imported.json()["currentProject"]["project"]["wave_conditions_filename"] == "wave_conditions.csv"
         assert imported.json()["currentProject"]["designConditions"][0]["aep_percent"] == pytest.approx(100 / 600)
 
+        table_saved = client.put(
+            "/api/design-conditions",
+            json={
+                "conditions": [
+                    {"condition_number": "10", "target_hs_m": 5.2, "target_tp_s": 13.0, "water_level_m_ahd": 1.4, "wave_stats_depth_m_ahd": -15, "ari_years": 100},
+                    {"condition_number": "2", "target_hs_m": 4.1, "target_tp_s": 11.0, "water_level_m_ahd": 0.8, "wave_stats_depth_m_ahd": -15, "aep_percent": 2},
+                ]
+            },
+        )
+        assert table_saved.status_code == 200
+        assert [item["condition_number"] for item in table_saved.json()["currentProject"]["designConditions"]] == ["10", "2"]
+        assert table_saved.json()["currentProject"]["project"]["wave_conditions_filename"] == ""
+
         scaled = client.put("/api/project-scale", json={"denominator": 50})
         assert scaled.status_code == 200
         assert scaled.json()["currentProject"]["project"]["model_scale_denominator"] == 50
 
-        imported_id = imported.json()["currentProject"]["designConditions"][0]["id"]
+        imported_id = table_saved.json()["currentProject"]["designConditions"][0]["id"]
         deleted = client.delete(f"/api/design-conditions/{imported_id}")
         assert deleted.status_code == 200
-        assert deleted.json()["currentProject"]["designConditions"] == []
+        assert [item["condition_number"] for item in deleted.json()["currentProject"]["designConditions"]] == ["2"]
+
+        emptied = client.put("/api/design-conditions", json={"conditions": []})
+        assert emptied.status_code == 200
+        assert emptied.json()["currentProject"]["designConditions"] == []
 
         saved = client.post("/api/projects/save")
         assert saved.status_code == 200

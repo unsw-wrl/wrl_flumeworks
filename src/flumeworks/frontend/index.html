@@ -93,33 +93,18 @@
               <input id="waveConditionsCsv" type="file" accept=".csv,text/csv" hidden>
               <button id="loadWaveConditionsCsv" class="secondary" type="button">Load wave conditions CSV</button>
               <span class="info-control"><button class="info-button" type="button" aria-label="Wave-condition CSV format" aria-controls="waveCsvHelp" aria-expanded="false">i</button><span id="waveCsvHelp" class="info-popover" hidden><strong>Required CSV columns</strong><code>Condition ID, ARI, Water level (m AHD), Wave stats depth (m AHD), Wave height (Hm0), Wave period Tp (s)</code><small>AEP (%) is optional. Loading a CSV replaces the current condition table.</small></span></span>
-              <button id="addCondition" class="primary" type="button">Add condition</button>
+              <button id="editConditions" class="primary" type="button">Edit</button>
             </div>
           </div>
-          <form id="conditionForm" class="condition-form editor" hidden>
-            <div class="editor-heading"><h3 id="conditionEditorTitle">Add design condition</h3><button id="cancelConditionEdit" class="secondary" type="button">Cancel</button></div>
-            <input name="condition_id" type="hidden">
-            <label>Condition ID<input name="condition_number" required maxlength="100" placeholder="e.g. 1"></label>
-            <div class="field-row thirds">
-              <label>Target Hs (m)<input name="target_hs_m" type="number" min="0" step="any" required></label>
-              <label>Target Tp (s)<input name="target_tp_s" type="number" min="0.000001" step="any" required></label>
-              <div class="field-control"><div class="label-title"><label for="waterLevelInput">Water level (m AHD)</label><span class="info-control"><button class="info-button" type="button" aria-label="About water level" aria-controls="waterLevelHelp" aria-expanded="false">i</button><span id="waterLevelHelp" class="info-popover" hidden>This is the water level at which the design condition applies, expressed in metres AHD.</span></span></div><input id="waterLevelInput" name="water_level_m_ahd" type="number" step="any" required></div>
-            </div>
-            <div class="field-row thirds">
-              <div class="field-control"><div class="label-title"><label for="statsDepthInput">Wave stats depth (m AHD)</label><span class="info-control"><button class="info-button" type="button" aria-label="About wave stats depth" aria-controls="statsDepthHelp" aria-expanded="false">i</button><span id="statsDepthHelp" class="info-popover" hidden>The bathymetry elevation where the target Hs and Tp are specified.</span></span></div><input id="statsDepthInput" name="wave_stats_depth_m_ahd" type="number" step="any" required></div>
-              <label>AEP (%)<input name="aep_percent" type="number" min="0.000001" max="100" step="any"></label>
-              <label>ARI (years)<input name="ari_years" type="number" min="1" step="any"></label>
-            </div>
-            <label>Notes<textarea name="notes" rows="2" maxlength="4000"></textarea></label>
-            <button id="saveCondition" class="primary" type="submit">Add condition</button>
-          </form>
           <div class="table-wrap conditions-table">
             <table>
-              <thead><tr><th>Condition ID</th><th id="hsHeading">Target Hs (m)</th><th id="tpHeading">Target Tp (s)</th><th id="waterHeading">Water level (m AHD)</th><th id="depthHeading">Wave stats depth (m AHD)</th><th>AEP (%)</th><th>ARI (years)</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Condition ID</th><th id="hsHeading">Target Hs (m)</th><th id="tpHeading">Target Tp (s)</th><th><span class="heading-info"><span id="waterHeading">Water level (m AHD)</span><span class="info-control"><button class="info-button" type="button" aria-label="About water level" aria-controls="waterLevelHelp" aria-expanded="false">i</button><span id="waterLevelHelp" class="info-popover" hidden>This is the water level at which the design condition applies, expressed in metres AHD.</span></span></span></th><th><span class="heading-info"><span id="depthHeading">Wave stats depth (m AHD)</span><span class="info-control"><button class="info-button" type="button" aria-label="About wave stats depth" aria-controls="statsDepthHelp" aria-expanded="false">i</button><span id="statsDepthHelp" class="info-popover" hidden>The bathymetry elevation where the target Hs and Tp are specified.</span></span></span></th><th>AEP (%)</th><th>ARI (years)</th><th>Notes</th><th id="conditionActionsHeading" hidden>Reorder or delete</th></tr></thead>
               <tbody id="conditionRows"></tbody>
             </table>
             <p id="conditionEmpty" class="empty">No design conditions have been added.</p>
           </div>
+          <button id="addConditionRow" class="add-condition-row" type="button" hidden aria-label="Add design condition" title="Add design condition"><span aria-hidden="true">+</span> Add condition</button>
+          <div id="conditionEditActions" class="condition-edit-actions" hidden><button id="saveConditionChanges" class="primary" type="button">Save changes</button><button id="cancelConditionChanges" class="secondary" type="button">Cancel</button></div>
         </section>
       </section>
 

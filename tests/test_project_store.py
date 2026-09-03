@@ -91,6 +91,23 @@ def test_aep_derives_ari_for_direct_condition_entry(tmp_path: Path) -> None:
     assert condition["ari_years"] == pytest.approx(25.0)
 
 
+def test_condition_table_order_is_persisted_and_can_be_empty(tmp_path: Path) -> None:
+    database = create_database(tmp_path / "ordered.flumeworks")
+    database.replace_design_conditions(
+        [
+            {"condition_number": "10", "target_hs_m": 5.0},
+            {"condition_number": "2", "target_hs_m": 4.0},
+        ],
+        allow_empty=True,
+    )
+
+    assert [item["condition_number"] for item in database.design_conditions()] == ["10", "2"]
+    assert [item["sort_order"] for item in database.design_conditions()] == [0, 1]
+
+    database.replace_design_conditions([], allow_empty=True)
+    assert database.design_conditions() == []
+
+
 def test_snapshot_refuses_to_overwrite_backup(tmp_path: Path) -> None:
     database = create_database(tmp_path / "source.flumeworks")
     destination = tmp_path / "flumeworks_backups" / "snapshot.flumeworks"
@@ -115,14 +132,19 @@ def test_project_lease_blocks_a_second_editor_and_releases(tmp_path: Path) -> No
     assert not project.with_name(project.name + ".lock").exists()
 
 
-@pytest.mark.parametrize("old_version", [1, 2])
+@pytest.mark.parametrize("old_version", [1, 2, 3])
 def test_older_database_migrates_without_losing_project_data(tmp_path: Path, old_version: int) -> None:
     path = tmp_path / f"old-v{old_version}.flumeworks"
     database = create_database(path)
+    database.add_design_condition(condition_number="10")
+    database.add_design_condition(condition_number="2")
     with closing(sqlite3.connect(database.path)) as connection:
-        connection.execute("ALTER TABLE design_condition DROP COLUMN wave_stats_depth_m_ahd")
-        connection.execute("ALTER TABLE project DROP COLUMN wave_conditions_filename")
-        connection.execute("ALTER TABLE project DROP COLUMN model_scale_denominator")
+        connection.execute("DROP INDEX design_condition_sort_idx")
+        connection.execute("ALTER TABLE design_condition DROP COLUMN sort_order")
+        if old_version < 3:
+            connection.execute("ALTER TABLE design_condition DROP COLUMN wave_stats_depth_m_ahd")
+            connection.execute("ALTER TABLE project DROP COLUMN wave_conditions_filename")
+            connection.execute("ALTER TABLE project DROP COLUMN model_scale_denominator")
         if old_version == 1:
             connection.execute("DROP TABLE model_design_state")
         connection.execute("DELETE FROM schema_migration")
@@ -136,8 +158,10 @@ def test_older_database_migrates_without_losing_project_data(tmp_path: Path, old
     assert migrated.model_design_state() is None
     assert migrated.project().model_scale_denominator is None
     assert migrated.project().wave_conditions_filename == ""
+    assert [item["condition_number"] for item in migrated.design_conditions()] == ["2", "10"]
     with closing(sqlite3.connect(path)) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert "sort_order" in {row[1] for row in connection.execute("PRAGMA table_info(design_condition)")}
 
 
 def test_recent_projects_remember_arbitrary_paths(tmp_path: Path) -> None:

@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 PROJECT_EXTENSION = ".flumeworks"
 BACKUP_FOLDER_NAME = "flumeworks_backups"
 FACILITIES = {
@@ -113,6 +113,7 @@ CREATE TABLE design_condition (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL DEFAULT 1 REFERENCES project(id) ON DELETE CASCADE,
     condition_number TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
     target_hs_m REAL CHECK (target_hs_m IS NULL OR target_hs_m >= 0),
     target_tp_s REAL CHECK (target_tp_s IS NULL OR target_tp_s > 0),
     water_level_m_ahd REAL,
@@ -141,6 +142,7 @@ CREATE TABLE model_design_state (
 );
 
 CREATE INDEX design_condition_project_idx ON design_condition(project_id, condition_number);
+CREATE INDEX design_condition_sort_idx ON design_condition(project_id, sort_order);
 """
 
 
@@ -158,6 +160,12 @@ ALTER TABLE project ADD COLUMN model_scale_denominator REAL
     CHECK (model_scale_denominator IS NULL OR model_scale_denominator > 0);
 ALTER TABLE project ADD COLUMN wave_conditions_filename TEXT NOT NULL DEFAULT '';
 ALTER TABLE design_condition ADD COLUMN wave_stats_depth_m_ahd REAL;
+"""
+
+
+MIGRATION_3_TO_4 = """
+ALTER TABLE design_condition ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX design_condition_sort_idx ON design_condition(project_id, sort_order);
 """
 
 
@@ -241,6 +249,23 @@ class ProjectDatabase:
                     connection.execute("PRAGMA user_version = 3")
                     connection.commit()
                     version = 3
+                if version == 3:
+                    ordered_ids = connection.execute(
+                        """SELECT id FROM design_condition
+                           ORDER BY CAST(condition_number AS REAL), condition_number, id"""
+                    ).fetchall()
+                    connection.executescript(MIGRATION_3_TO_4)
+                    connection.executemany(
+                        "UPDATE design_condition SET sort_order = ? WHERE id = ?",
+                        [(index, row["id"]) for index, row in enumerate(ordered_ids)],
+                    )
+                    connection.execute(
+                        "INSERT INTO schema_migration(version, applied_at) VALUES (?, ?)",
+                        (4, utc_now()),
+                    )
+                    connection.execute("PRAGMA user_version = 4")
+                    connection.commit()
+                    version = 4
                 row = connection.execute("SELECT uuid FROM project WHERE id = 1").fetchone()
         except sqlite3.Error as exc:
             raise ProjectError(f"Could not open FlumeWorks project {self.path}: {exc}") from exc
@@ -276,10 +301,10 @@ class ProjectDatabase:
             rows = connection.execute(
                 """SELECT id, condition_number, target_hs_m, target_tp_s,
                           water_level_m_ahd, wave_stats_depth_m_ahd,
-                          aep_percent, ari_years, notes,
+                          aep_percent, ari_years, notes, sort_order,
                           created_at, updated_at
                    FROM design_condition
-                   ORDER BY CAST(condition_number AS REAL), condition_number"""
+                   ORDER BY sort_order, id"""
             ).fetchall()
         return [dict(row) for row in rows]
 
@@ -302,13 +327,17 @@ class ProjectDatabase:
         now = utc_now()
         try:
             with closing(self._connect()) as connection:
+                sort_order = connection.execute(
+                    "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM design_condition"
+                ).fetchone()[0]
                 cursor = connection.execute(
                     """INSERT INTO design_condition
-                       (condition_number, target_hs_m, target_tp_s, water_level_m_ahd,
+                       (condition_number, sort_order, target_hs_m, target_tp_s, water_level_m_ahd,
                         wave_stats_depth_m_ahd, aep_percent, ari_years, notes, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         number,
+                        sort_order,
                         target_hs_m,
                         target_tp_s,
                         water_level_m_ahd,
@@ -393,16 +422,20 @@ class ProjectDatabase:
             connection.commit()
 
     def replace_design_conditions(
-        self, conditions: list[dict[str, Any]], *, source_filename: str = ""
+        self,
+        conditions: list[dict[str, Any]],
+        *,
+        source_filename: str = "",
+        allow_empty: bool = False,
     ) -> None:
-        if not conditions:
+        if not conditions and not allow_empty:
             raise ProjectError("The wave-condition CSV contains no valid conditions.")
         now = utc_now()
         seen: set[str] = set()
         try:
             with closing(self._connect()) as connection:
                 connection.execute("DELETE FROM design_condition")
-                for condition in conditions:
+                for sort_order, condition in enumerate(conditions):
                     number = str(condition.get("condition_number", "")).strip()
                     if not number:
                         raise ProjectError("Every design condition requires a condition number.")
@@ -415,12 +448,13 @@ class ProjectDatabase:
                     )
                     connection.execute(
                         """INSERT INTO design_condition
-                           (condition_number, target_hs_m, target_tp_s, water_level_m_ahd,
+                           (condition_number, sort_order, target_hs_m, target_tp_s, water_level_m_ahd,
                             wave_stats_depth_m_ahd, aep_percent, ari_years, notes,
                             created_at, updated_at)
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                         (
                             number,
+                            sort_order,
                             condition.get("target_hs_m"),
                             condition.get("target_tp_s"),
                             condition.get("water_level_m_ahd"),

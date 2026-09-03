@@ -176,6 +176,14 @@ class ApplicationState:
             self._dirty = True
             return self.current_payload()
 
+    def save_design_condition_table(self, conditions: list[dict[str, Any]]) -> dict[str, Any]:
+        with self._lock:
+            self._require_editable().replace_design_conditions(
+                conditions, source_filename="", allow_empty=True
+            )
+            self._dirty = True
+            return self.current_payload()
+
     def set_model_scale(self, denominator: float | None) -> dict[str, Any]:
         with self._lock:
             self._require_editable().set_model_scale(denominator)

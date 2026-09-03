@@ -71,6 +71,23 @@ class DesignConditionImportRequest(BaseModel):
         return self
 
 
+class DesignConditionTableRequest(BaseModel):
+    conditions: list[DesignConditionRequest] = Field(max_length=10000)
+
+    @model_validator(mode="after")
+    def complete_wave_rows(self) -> "DesignConditionTableRequest":
+        for condition in self.conditions:
+            required = (
+                condition.target_hs_m,
+                condition.target_tp_s,
+                condition.water_level_m_ahd,
+                condition.wave_stats_depth_m_ahd,
+            )
+            if any(value is None for value in required):
+                raise ValueError("Design conditions require Hs, Tp, water level, and wave-stats depth.")
+        return self
+
+
 class ProjectScaleRequest(BaseModel):
     denominator: float | None = Field(default=None, gt=0, le=10000)
 
@@ -158,6 +175,16 @@ def create_app(state: ApplicationState) -> FastAPI:
         except ProjectError as exc:
             raise project_http_error(exc) from exc
         return {"currentProject": current, "importedCount": len(request.conditions)}
+
+    @app.put("/api/design-conditions")
+    def save_design_condition_table(request: DesignConditionTableRequest) -> dict[str, object]:
+        try:
+            current = state.save_design_condition_table(
+                [condition.model_dump() for condition in request.conditions]
+            )
+        except ProjectError as exc:
+            raise project_http_error(exc) from exc
+        return {"currentProject": current, "savedCount": len(request.conditions)}
 
     @app.put("/api/design-conditions/{condition_id}")
     def update_design_condition(
