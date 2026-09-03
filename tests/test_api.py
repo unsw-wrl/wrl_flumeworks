@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from flumeworks.api import create_app
@@ -48,17 +49,19 @@ def test_project_model_design_save_and_backup_workflow(tmp_path: Path) -> None:
 
         condition = client.post(
             "/api/design-conditions",
-            json={"condition_number": "DC1", "target_hs_m": 4.2, "target_tp_s": 12.5, "water_level_m_ahd": 1.2, "wave_stats_depth_m_ahd": -15},
+            json={"condition_number": "DC1", "target_hs_m": 4.2, "target_tp_s": 12.5, "water_level_m_ahd": 1.2, "wave_stats_depth_m_ahd": -15, "aep_percent": 4},
         )
         assert condition.status_code == 201
+        assert condition.json()["condition"]["ari_years"] == pytest.approx(25.0)
 
         condition_id = condition.json()["condition"]["id"]
         updated = client.put(
             f"/api/design-conditions/{condition_id}",
-            json={"condition_number": "DC1", "target_hs_m": 4.4, "target_tp_s": 12.6, "water_level_m_ahd": 1.3, "wave_stats_depth_m_ahd": -14.5},
+            json={"condition_number": "DC1", "target_hs_m": 4.4, "target_tp_s": 12.6, "water_level_m_ahd": 1.3, "wave_stats_depth_m_ahd": -14.5, "ari_years": 20},
         )
         assert updated.status_code == 200
         assert updated.json()["condition"]["target_hs_m"] == 4.4
+        assert updated.json()["condition"]["aep_percent"] == pytest.approx(5.0)
 
         imported = client.put(
             "/api/design-conditions/import",
@@ -66,6 +69,7 @@ def test_project_model_design_save_and_backup_workflow(tmp_path: Path) -> None:
         )
         assert imported.status_code == 200
         assert imported.json()["currentProject"]["project"]["wave_conditions_filename"] == "wave_conditions.csv"
+        assert imported.json()["currentProject"]["designConditions"][0]["aep_percent"] == pytest.approx(100 / 600)
 
         scaled = client.put("/api/project-scale", json={"denominator": 50})
         assert scaled.status_code == 200

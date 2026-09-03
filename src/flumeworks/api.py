@@ -35,7 +35,7 @@ class DesignConditionRequest(BaseModel):
     water_level_m_ahd: float | None = None
     wave_stats_depth_m_ahd: float | None = None
     aep_percent: float | None = Field(default=None, gt=0, le=100)
-    ari_years: float | None = Field(default=None, gt=0)
+    ari_years: float | None = Field(default=None, ge=1)
     notes: str = Field(default="", max_length=4000)
 
     @model_validator(mode="after")
@@ -46,6 +46,10 @@ class DesignConditionRequest(BaseModel):
             and self.water_level_m_ahd <= self.wave_stats_depth_m_ahd
         ):
             raise ValueError("Water level must be above the wave-stats depth.")
+        if self.aep_percent is None and self.ari_years is not None:
+            self.aep_percent = 100.0 / self.ari_years
+        elif self.ari_years is None and self.aep_percent is not None:
+            self.ari_years = 100.0 / self.aep_percent
         return self
 
 

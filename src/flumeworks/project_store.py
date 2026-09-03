@@ -64,6 +64,17 @@ def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
 
 
+def complete_probability_pair(
+    aep_percent: float | None, ari_years: float | None
+) -> tuple[float | None, float | None]:
+    """Derive a missing annual exceedance probability or average recurrence interval."""
+    if aep_percent is None and ari_years is not None and ari_years > 0:
+        aep_percent = 100.0 / ari_years
+    elif ari_years is None and aep_percent is not None and aep_percent > 0:
+        ari_years = 100.0 / aep_percent
+    return aep_percent, ari_years
+
+
 def project_slug(project_number: str, name: str) -> str:
     source = "_".join(part for part in (project_number.strip(), name.strip()) if part)
     slug = re.sub(r"[^A-Za-z0-9._-]+", "_", source).strip("._-")
@@ -287,6 +298,7 @@ class ProjectDatabase:
         number = condition_number.strip()
         if not number:
             raise ProjectError("Design condition number is required.")
+        aep_percent, ari_years = complete_probability_pair(aep_percent, ari_years)
         now = utc_now()
         try:
             with closing(self._connect()) as connection:
@@ -335,6 +347,7 @@ class ProjectDatabase:
         number = condition_number.strip()
         if not number:
             raise ProjectError("Design condition number is required.")
+        aep_percent, ari_years = complete_probability_pair(aep_percent, ari_years)
         now = utc_now()
         try:
             with closing(self._connect()) as connection:
@@ -397,6 +410,9 @@ class ProjectDatabase:
                     if identity in seen:
                         raise ProjectError(f"Design condition {number} appears more than once.")
                     seen.add(identity)
+                    aep_percent, ari_years = complete_probability_pair(
+                        condition.get("aep_percent"), condition.get("ari_years")
+                    )
                     connection.execute(
                         """INSERT INTO design_condition
                            (condition_number, target_hs_m, target_tp_s, water_level_m_ahd,
@@ -409,8 +425,8 @@ class ProjectDatabase:
                             condition.get("target_tp_s"),
                             condition.get("water_level_m_ahd"),
                             condition.get("wave_stats_depth_m_ahd"),
-                            condition.get("aep_percent"),
-                            condition.get("ari_years"),
+                            aep_percent,
+                            ari_years,
                             str(condition.get("notes", "")).strip(),
                             now,
                             now,

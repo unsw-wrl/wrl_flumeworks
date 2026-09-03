@@ -58,6 +58,8 @@ def test_project_and_model_design_state_round_trip(tmp_path: Path) -> None:
     assert database.project().model_scale_denominator == pytest.approx(50)
     assert database.design_conditions()[0]["target_hs_m"] == pytest.approx(7.0)
     assert database.design_conditions()[0]["wave_stats_depth_m_ahd"] == pytest.approx(-14.5)
+    assert database.design_conditions()[0]["aep_percent"] == pytest.approx(1.0)
+    assert database.design_conditions()[0]["ari_years"] == pytest.approx(100.0)
 
 
 def test_import_replaces_conditions_and_records_csv_name(tmp_path: Path) -> None:
@@ -71,10 +73,22 @@ def test_import_replaces_conditions_and_records_csv_name(tmp_path: Path) -> None
         source_filename=r"C:\inputs\wave_conditions.csv",
     )
 
-    assert [item["condition_number"] for item in database.design_conditions()] == ["1", "2"]
+    conditions = database.design_conditions()
+    assert [item["condition_number"] for item in conditions] == ["1", "2"]
+    assert conditions[0]["aep_percent"] == pytest.approx(100.0)
+    assert conditions[1]["aep_percent"] == pytest.approx(10.0)
     assert database.project().wave_conditions_filename == "wave_conditions.csv"
     database.delete_design_condition(database.design_conditions()[0]["id"])
     assert [item["condition_number"] for item in database.design_conditions()] == ["2"]
+
+
+def test_aep_derives_ari_for_direct_condition_entry(tmp_path: Path) -> None:
+    database = create_database(tmp_path / "probability.flumeworks")
+
+    condition = database.add_design_condition(condition_number="AEP only", aep_percent=4)
+
+    assert condition["aep_percent"] == pytest.approx(4.0)
+    assert condition["ari_years"] == pytest.approx(25.0)
 
 
 def test_snapshot_refuses_to_overwrite_backup(tmp_path: Path) -> None:

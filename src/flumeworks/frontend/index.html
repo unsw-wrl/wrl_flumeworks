@@ -108,7 +108,7 @@
             <div class="field-row thirds">
               <div class="field-control"><div class="label-title"><label for="statsDepthInput">Wave stats depth (m AHD)</label><span class="info-control"><button class="info-button" type="button" aria-label="About wave stats depth" aria-controls="statsDepthHelp" aria-expanded="false">i</button><span id="statsDepthHelp" class="info-popover" hidden>The bathymetry elevation where the target Hs and Tp are specified.</span></span></div><input id="statsDepthInput" name="wave_stats_depth_m_ahd" type="number" step="any" required></div>
               <label>AEP (%)<input name="aep_percent" type="number" min="0.000001" max="100" step="any"></label>
-              <label>ARI (years)<input name="ari_years" type="number" min="0.000001" step="any"></label>
+              <label>ARI (years)<input name="ari_years" type="number" min="1" step="any"></label>
             </div>
             <label>Notes<textarea name="notes" rows="2" maxlength="4000"></textarea></label>
             <button id="saveCondition" class="primary" type="submit">Add condition</button>

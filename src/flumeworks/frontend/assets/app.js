@@ -81,6 +81,37 @@ function conditionPeriod(value, scale) {
   return `${(conditionDisplayMode === "model" ? number / Math.sqrt(scale) : number).toFixed(2)} s`;
 }
 
+function linkedAep(condition) {
+  if (condition.aep_percent !== null && condition.aep_percent !== undefined) return Number(condition.aep_percent);
+  const ari = Number(condition.ari_years);
+  return Number.isFinite(ari) && ari > 0 ? 100 / ari : null;
+}
+
+function linkedAri(condition) {
+  if (condition.ari_years !== null && condition.ari_years !== undefined) return Number(condition.ari_years);
+  const aep = Number(condition.aep_percent);
+  return Number.isFinite(aep) && aep > 0 ? 100 / aep : null;
+}
+
+function probabilityText(value, suffix) {
+  if (value === null || !Number.isFinite(value)) return "—";
+  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2)}${suffix}`;
+}
+
+function probabilityInputValue(value) {
+  return Number.isFinite(value) && value > 0 ? String(Number(value.toFixed(6))) : "";
+}
+
+let probabilitySyncing = false;
+function syncProbabilityFields(sourceName, targetName) {
+  if (probabilitySyncing) return;
+  const form = $("conditionForm"), source = form.elements.namedItem(sourceName), target = form.elements.namedItem(targetName);
+  const value = Number(source.value);
+  probabilitySyncing = true;
+  target.value = source.value.trim() !== "" && Number.isFinite(value) && value > 0 ? probabilityInputValue(100 / value) : "";
+  probabilitySyncing = false;
+}
+
 function setConditionDisplay(mode) {
   if (mode === "model" && !projectScale()) return;
   conditionDisplayMode = mode;
@@ -102,6 +133,8 @@ function editCondition(condition) {
   for (const name of ["condition_number", "target_hs_m", "target_tp_s", "water_level_m_ahd", "wave_stats_depth_m_ahd", "aep_percent", "ari_years", "notes"]) {
     const input = form.elements.namedItem(name); if (input) input.value = condition[name] ?? "";
   }
+  form.elements.namedItem("aep_percent").value = probabilityInputValue(linkedAep(condition));
+  form.elements.namedItem("ari_years").value = probabilityInputValue(linkedAri(condition));
   $("conditionEditorTitle").textContent = `Edit condition ${condition.condition_number}`; $("saveCondition").textContent = "Update condition"; form.hidden = false;
   form.elements.namedItem("condition_number").focus(); form.scrollIntoView({behavior: "smooth", block: "nearest"});
 }
@@ -125,7 +158,7 @@ function renderConditionRows(conditions, scale) {
   const rows = $("conditionRows"); rows.replaceChildren(); $("conditionEmpty").hidden = conditions.length > 0;
   for (const condition of conditions) {
     const row = document.createElement("tr");
-    const values = [condition.condition_number, conditionLength(condition.target_hs_m, scale), conditionPeriod(condition.target_tp_s, scale), conditionLength(condition.water_level_m_ahd, scale), conditionLength(condition.wave_stats_depth_m_ahd, scale), textOrDash(condition.aep_percent, "%"), textOrDash(condition.ari_years, " yr")];
+    const values = [condition.condition_number, conditionLength(condition.target_hs_m, scale), conditionPeriod(condition.target_tp_s, scale), conditionLength(condition.water_level_m_ahd, scale), conditionLength(condition.wave_stats_depth_m_ahd, scale), probabilityText(linkedAep(condition), "%"), probabilityText(linkedAri(condition), " yr")];
     for (const value of values) { const cell = document.createElement("td"); cell.textContent = value; row.appendChild(cell); }
     const actions = document.createElement("td"), edit = document.createElement("button"), remove = document.createElement("button");
     edit.type = remove.type = "button"; edit.className = "table-action"; edit.textContent = "Edit"; edit.addEventListener("click", () => editCondition(condition));
@@ -160,7 +193,7 @@ function modelDesignSignature(state) { if (!state) return ""; const canonical = 
 function sharedWaveConditions() {
   const current = bootstrap?.currentProject; if (!current) return [];
   return (current.designConditions || []).filter(condition => [condition.water_level_m_ahd, condition.wave_stats_depth_m_ahd, condition.target_hs_m, condition.target_tp_s].every(value => value !== null && value !== undefined && Number.isFinite(Number(value)))).map((condition, index) => ({
-    conditionId: String(condition.condition_number), ari: condition.ari_years === null || condition.ari_years === undefined ? "" : String(condition.ari_years), waterLevel: Number(condition.water_level_m_ahd), statsDepth: Number(condition.wave_stats_depth_m_ahd), waveHeight: Number(condition.target_hs_m), period: Number(condition.target_tp_s), sourceRow: index + 2,
+    conditionId: String(condition.condition_number), ari: linkedAri(condition) === null ? "" : String(linkedAri(condition)), waterLevel: Number(condition.water_level_m_ahd), statsDepth: Number(condition.wave_stats_depth_m_ahd), waveHeight: Number(condition.target_hs_m), period: Number(condition.target_tp_s), sourceRow: index + 2,
   }));
 }
 
@@ -243,7 +276,7 @@ function parseDesignConditionsCsv(text) {
     const cells = rows[index], conditionNumber = String(cells[columns.id] ?? "").trim();
     const water = numeric(cells[columns.water] ?? ""), depth = numeric(cells[columns.depth] ?? ""), height = numeric(cells[columns.height] ?? ""), period = numeric(cells[columns.period] ?? "");
     const ari = columns.ari >= 0 ? optionalNumber(cells[columns.ari]) : null, aep = columns.aep >= 0 ? optionalNumber(cells[columns.aep]) : null;
-    if (!conditionNumber || ![water, depth, height, period].every(Number.isFinite) || height < 0 || period <= 0 || water <= depth || (ari !== null && (!Number.isFinite(ari) || ari <= 0)) || (aep !== null && (!Number.isFinite(aep) || aep <= 0 || aep > 100))) invalid.push(index + 1);
+    if (!conditionNumber || ![water, depth, height, period].every(Number.isFinite) || height < 0 || period <= 0 || water <= depth || (ari !== null && (!Number.isFinite(ari) || ari < 1)) || (aep !== null && (!Number.isFinite(aep) || aep <= 0 || aep > 100))) invalid.push(index + 1);
     else conditions.push({condition_number: conditionNumber, target_hs_m: height, target_tp_s: period, water_level_m_ahd: water, wave_stats_depth_m_ahd: depth, aep_percent: aep, ari_years: ari, notes: ""});
   }
   if (invalid.length) throw new Error(`The CSV has invalid data on row${invalid.length === 1 ? "" : "s"} ${invalid.join(", ")}. The existing table was not changed.`);
@@ -279,6 +312,8 @@ $("clearProjectScale").addEventListener("click", async () => {
 
 $("addCondition").addEventListener("click", openConditionEditor); $("cancelConditionEdit").addEventListener("click", closeConditionEditor);
 $("showPrototypeConditions").addEventListener("click", () => setConditionDisplay("prototype")); $("showModelConditions").addEventListener("click", () => setConditionDisplay("model"));
+$("conditionForm").elements.namedItem("aep_percent").addEventListener("input", () => syncProbabilityFields("aep_percent", "ari_years"));
+$("conditionForm").elements.namedItem("ari_years").addEventListener("input", () => syncProbabilityFields("ari_years", "aep_percent"));
 $("conditionForm").addEventListener("submit", async event => {
   event.preventDefault(); const form = event.currentTarget, data = new FormData(form), conditionId = String(data.get("condition_id") || "").trim();
   const request = {condition_number: String(data.get("condition_number") || ""), target_hs_m: numberOrNull(form, "target_hs_m"), target_tp_s: numberOrNull(form, "target_tp_s"), water_level_m_ahd: numberOrNull(form, "water_level_m_ahd"), wave_stats_depth_m_ahd: numberOrNull(form, "wave_stats_depth_m_ahd"), aep_percent: numberOrNull(form, "aep_percent"), ari_years: numberOrNull(form, "ari_years"), notes: String(data.get("notes") || "")};
