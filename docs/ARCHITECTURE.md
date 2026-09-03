@@ -43,3 +43,8 @@ The complete viewer state—including flume/CAD reference data, bathymetry, plac
 conditions, layer visibility, and model settings—is stored in the active `.flumeworks` database.
 Model Design JSON remains available as a workspace-only import/export format and is deliberately
 labelled separately from the complete project file.
+
+The relational `design_condition` table is authoritative for wave conditions. Project Setup owns
+CSV import and row editing, and passes a mapped view of those rows to Model Design through the
+bridge. Project scale is also relational project metadata; it is deliberately independent from the
+Model Design CAD-placement scale.

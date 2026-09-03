@@ -26,6 +26,11 @@ state, bathymetry, and wave conditions. The **Export model design** and **Import
 buttons in Model Design exchange only that workspace as JSON; they are useful for transferring a
 design independently, but do not replace the complete `.flumeworks` project.
 
+Design wave conditions are entered, edited, deleted, or loaded from CSV in **Project Setup**.
+Model Design reads the same project table automatically. A separate Project Setup scale enables
+Froude-scaled prototype/model display in the condition table without changing the drawing scale in
+Model Design.
+
 ## Optional local model configuration
 
 Copy `flumeworks_config.example.json` to `flumeworks_config.json` and set the installed SWAN,

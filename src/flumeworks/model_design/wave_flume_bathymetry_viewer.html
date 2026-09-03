@@ -184,8 +184,7 @@
 
     <details class="section panel">
       <summary>Wave conditions</summary><div class="panel-body">
-        <input id="waveCsvFile" type="file" accept=".csv,text/csv" hidden>
-        <div class="row"><button id="loadWaveCsv" class="primary">Load wave CSV</button><button id="restoreDefaultWaves">Restore default</button></div>
+        <p>Wave conditions are managed in Project Setup and update here automatically.</p>
         <div class="file-name" id="waveFileName"></div><p id="waveSummary"></p>
         <div class="wave-list" id="waveConditionList"></div>
       </div>
@@ -1470,7 +1469,7 @@ function parseProjectState(text) {
   if(placement.anchor!==null&&placement.anchor!==undefined){const rawAnchor=projectObject(placement.anchor,"Anchor");importedAnchor={x:projectNumber(rawAnchor.x,"Anchor X"),y:projectNumber(rawAnchor.y,"Anchor Y")};}
 
   const rawWaves=projectObject(data.waveConditions,"Wave conditions"),rawConditions=rawWaves.conditions;
-  if(!Array.isArray(rawConditions)||!rawConditions.length)throw new Error("Project wave conditions must contain at least one condition.");
+  if(!Array.isArray(rawConditions))throw new Error("Project wave conditions must be a list.");
   const conditions=rawConditions.map((condition,index)=>{
     projectObject(condition,`Wave condition ${index+1}`);const conditionId=String(condition.conditionId??"").trim();if(!conditionId)throw new Error(`Wave condition ${index+1} has no Condition ID.`);
     const waterLevel=projectNumber(condition.waterLevel,`Condition ${conditionId} water level`),statsDepth=projectNumber(condition.statsDepth,`Condition ${conditionId} wave-stats depth`),waveHeight=projectNumber(condition.waveHeight,`Condition ${conditionId} Hm0`,value=>value>=0),period=projectNumber(condition.period,`Condition ${conditionId} Tp`,value=>value>0);
@@ -1680,6 +1679,17 @@ svg.addEventListener("mousedown",event=>{if(event.button===1)event.preventDefaul
 svg.addEventListener("auxclick",event=>{if(event.button===1)event.preventDefault();});
 
 let flumeworksDefaultModelDesignState=null;
+function useSharedWaveConditions(project,rawConditions,filename){
+  if(!Array.isArray(rawConditions))return;
+  const enabledIds=new Set(project.waveConditions.enabledIndices.map(index=>project.waveConditions.conditions[index]?.conditionId).filter(Boolean));
+  const conditions=rawConditions.map((condition,index)=>{
+    const conditionId=String(condition.conditionId??"").trim();if(!conditionId)throw new Error(`Shared wave condition ${index+1} has no Condition ID.`);
+    const waterLevel=projectNumber(condition.waterLevel,`Condition ${conditionId} water level`),statsDepth=projectNumber(condition.statsDepth,`Condition ${conditionId} wave-stats depth`),waveHeight=projectNumber(condition.waveHeight,`Condition ${conditionId} Hm0`,value=>value>=0),period=projectNumber(condition.period,`Condition ${conditionId} Tp`,value=>value>0);
+    if(waterLevel<=statsDepth)throw new Error(`Condition ${conditionId} water level must be above its wave-stats elevation.`);
+    return {conditionId,ari:String(condition.ari??""),waterLevel,statsDepth,waveHeight,period,sourceRow:Number.isFinite(Number(condition.sourceRow))?Number(condition.sourceRow):index+2};
+  });
+  project.waveConditions={filename:String(filename||"FlumeWorks design conditions"),conditions,enabledIndices:conditions.map((condition,index)=>enabledIds.has(condition.conditionId)?index:-1).filter(index=>index>=0)};
+}
 window.addEventListener("message",event=>{
   if(event.source!==window.parent||!event.data||typeof event.data.type!=="string")return;
   if(event.data.type==="flumeworks:capture-model-design"){
@@ -1692,6 +1702,7 @@ window.addEventListener("message",event=>{
       const rawState=event.data.state||flumeworksDefaultModelDesignState;
       if(!rawState)throw new Error("The embedded default Model Design is not ready.");
       const project=parseProjectState(JSON.stringify(rawState));
+      useSharedWaveConditions(project,event.data.sharedWaveConditions,event.data.waveConditionsFilename);
       applyProjectState(project,event.data.state?"from the active .flumeworks project":"defaults for the active project");
       window.parent.postMessage({type:"flumeworks:model-design-loaded"},"*");
     }catch(error){window.parent.postMessage({type:"flumeworks:model-design-error",message:error.message},"*");}
@@ -1701,9 +1712,6 @@ window.addEventListener("message",event=>{
 $("loadCsv").addEventListener("click",()=>$("csvFile").click());
 $("csvFile").addEventListener("change",event=>{const file=event.target.files[0];if(file)loadCsvFile(file);event.target.value="";});
 $("restoreDefault").addEventListener("click",()=>{bathy=DEFAULT_BATHY.map(item=>({...item}));loadedFilename=DEFAULT_FILE;renderTable();redrawBathymetry();setStatus("Restored the embedded default bathymetry.","success");});
-$("loadWaveCsv").addEventListener("click",()=>$("waveCsvFile").click());
-$("waveCsvFile").addEventListener("change",event=>{const file=event.target.files[0];if(file)loadWaveCsvFile(file);event.target.value="";});
-$("restoreDefaultWaves").addEventListener("click",()=>{waveConditions=DEFAULT_WAVE_CONDITIONS.map(item=>({...item}));waveLoadedFilename=DEFAULT_WAVE_FILE;activeWaveRows.clear();renderWaveConditionList();redrawWaveConditions();setStatus("Restored the embedded default wave conditions.","success");});
 $("reconnectModelService").addEventListener("click",checkModelService);
 $("runLocalModel").addEventListener("click",runLocalModel);
 $("modelEngine").addEventListener("change",refreshModelEngineUI);

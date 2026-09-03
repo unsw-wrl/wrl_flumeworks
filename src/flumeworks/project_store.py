@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 PROJECT_EXTENSION = ".flumeworks"
 BACKUP_FOLDER_NAME = "flumeworks_backups"
 FACILITIES = {
@@ -53,6 +53,8 @@ class ProjectRecord:
     facility: str
     facility_name: str
     description: str
+    model_scale_denominator: float | None
+    wave_conditions_filename: str
     created_at: str
     updated_at: str
     database_path: str
@@ -90,6 +92,8 @@ CREATE TABLE project (
     project_number TEXT NOT NULL DEFAULT '',
     facility TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
+    model_scale_denominator REAL CHECK (model_scale_denominator IS NULL OR model_scale_denominator > 0),
+    wave_conditions_filename TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -101,6 +105,7 @@ CREATE TABLE design_condition (
     target_hs_m REAL CHECK (target_hs_m IS NULL OR target_hs_m >= 0),
     target_tp_s REAL CHECK (target_tp_s IS NULL OR target_tp_s > 0),
     water_level_m_ahd REAL,
+    wave_stats_depth_m_ahd REAL,
     aep_percent REAL CHECK (aep_percent IS NULL OR (aep_percent > 0 AND aep_percent <= 100)),
     ari_years REAL CHECK (ari_years IS NULL OR ari_years > 0),
     notes TEXT NOT NULL DEFAULT '',
@@ -134,6 +139,14 @@ CREATE TABLE model_design_state (
     payload_json TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+"""
+
+
+MIGRATION_2_TO_3 = """
+ALTER TABLE project ADD COLUMN model_scale_denominator REAL
+    CHECK (model_scale_denominator IS NULL OR model_scale_denominator > 0);
+ALTER TABLE project ADD COLUMN wave_conditions_filename TEXT NOT NULL DEFAULT '';
+ALTER TABLE design_condition ADD COLUMN wave_stats_depth_m_ahd REAL;
 """
 
 
@@ -208,6 +221,15 @@ class ProjectDatabase:
                     connection.execute("PRAGMA user_version = 2")
                     connection.commit()
                     version = 2
+                if version == 2:
+                    connection.executescript(MIGRATION_2_TO_3)
+                    connection.execute(
+                        "INSERT INTO schema_migration(version, applied_at) VALUES (?, ?)",
+                        (3, utc_now()),
+                    )
+                    connection.execute("PRAGMA user_version = 3")
+                    connection.commit()
+                    version = 3
                 row = connection.execute("SELECT uuid FROM project WHERE id = 1").fetchone()
         except sqlite3.Error as exc:
             raise ProjectError(f"Could not open FlumeWorks project {self.path}: {exc}") from exc
@@ -228,6 +250,8 @@ class ProjectDatabase:
             facility=row["facility"],
             facility_name=FACILITIES.get(row["facility"], row["facility"]),
             description=row["description"],
+            model_scale_denominator=row["model_scale_denominator"],
+            wave_conditions_filename=row["wave_conditions_filename"],
             created_at=row["created_at"],
             updated_at=row["updated_at"],
             database_path=str(self.path),
@@ -240,7 +264,8 @@ class ProjectDatabase:
         with closing(self._connect()) as connection:
             rows = connection.execute(
                 """SELECT id, condition_number, target_hs_m, target_tp_s,
-                          water_level_m_ahd, aep_percent, ari_years, notes,
+                          water_level_m_ahd, wave_stats_depth_m_ahd,
+                          aep_percent, ari_years, notes,
                           created_at, updated_at
                    FROM design_condition
                    ORDER BY CAST(condition_number AS REAL), condition_number"""
@@ -254,6 +279,7 @@ class ProjectDatabase:
         target_hs_m: float | None = None,
         target_tp_s: float | None = None,
         water_level_m_ahd: float | None = None,
+        wave_stats_depth_m_ahd: float | None = None,
         aep_percent: float | None = None,
         ari_years: float | None = None,
         notes: str = "",
@@ -267,13 +293,14 @@ class ProjectDatabase:
                 cursor = connection.execute(
                     """INSERT INTO design_condition
                        (condition_number, target_hs_m, target_tp_s, water_level_m_ahd,
-                        aep_percent, ari_years, notes, created_at, updated_at)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        wave_stats_depth_m_ahd, aep_percent, ari_years, notes, created_at, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         number,
                         target_hs_m,
                         target_tp_s,
                         water_level_m_ahd,
+                        wave_stats_depth_m_ahd,
                         aep_percent,
                         ari_years,
                         notes.strip(),
@@ -291,6 +318,126 @@ class ProjectDatabase:
                 raise ProjectError(f"Design condition {number} already exists.") from exc
             raise ProjectError(f"Design condition values are invalid: {exc}") from exc
         return dict(row) if row else {}
+
+    def update_design_condition(
+        self,
+        condition_id: int,
+        *,
+        condition_number: str,
+        target_hs_m: float | None = None,
+        target_tp_s: float | None = None,
+        water_level_m_ahd: float | None = None,
+        wave_stats_depth_m_ahd: float | None = None,
+        aep_percent: float | None = None,
+        ari_years: float | None = None,
+        notes: str = "",
+    ) -> dict[str, Any]:
+        number = condition_number.strip()
+        if not number:
+            raise ProjectError("Design condition number is required.")
+        now = utc_now()
+        try:
+            with closing(self._connect()) as connection:
+                cursor = connection.execute(
+                    """UPDATE design_condition
+                       SET condition_number = ?, target_hs_m = ?, target_tp_s = ?,
+                           water_level_m_ahd = ?, wave_stats_depth_m_ahd = ?,
+                           aep_percent = ?, ari_years = ?, notes = ?, updated_at = ?
+                       WHERE id = ?""",
+                    (
+                        number,
+                        target_hs_m,
+                        target_tp_s,
+                        water_level_m_ahd,
+                        wave_stats_depth_m_ahd,
+                        aep_percent,
+                        ari_years,
+                        notes.strip(),
+                        now,
+                        condition_id,
+                    ),
+                )
+                if cursor.rowcount != 1:
+                    raise ProjectError("That design condition no longer exists.")
+                connection.execute("UPDATE project SET updated_at = ? WHERE id = 1", (now,))
+                row = connection.execute(
+                    "SELECT * FROM design_condition WHERE id = ?", (condition_id,)
+                ).fetchone()
+                connection.commit()
+        except sqlite3.IntegrityError as exc:
+            if "UNIQUE" in str(exc).upper():
+                raise ProjectError(f"Design condition {number} already exists.") from exc
+            raise ProjectError(f"Design condition values are invalid: {exc}") from exc
+        return dict(row) if row else {}
+
+    def delete_design_condition(self, condition_id: int) -> None:
+        now = utc_now()
+        with closing(self._connect()) as connection:
+            cursor = connection.execute("DELETE FROM design_condition WHERE id = ?", (condition_id,))
+            if cursor.rowcount != 1:
+                raise ProjectError("That design condition no longer exists.")
+            connection.execute("UPDATE project SET updated_at = ? WHERE id = 1", (now,))
+            connection.commit()
+
+    def replace_design_conditions(
+        self, conditions: list[dict[str, Any]], *, source_filename: str = ""
+    ) -> None:
+        if not conditions:
+            raise ProjectError("The wave-condition CSV contains no valid conditions.")
+        now = utc_now()
+        seen: set[str] = set()
+        try:
+            with closing(self._connect()) as connection:
+                connection.execute("DELETE FROM design_condition")
+                for condition in conditions:
+                    number = str(condition.get("condition_number", "")).strip()
+                    if not number:
+                        raise ProjectError("Every design condition requires a condition number.")
+                    identity = number.casefold()
+                    if identity in seen:
+                        raise ProjectError(f"Design condition {number} appears more than once.")
+                    seen.add(identity)
+                    connection.execute(
+                        """INSERT INTO design_condition
+                           (condition_number, target_hs_m, target_tp_s, water_level_m_ahd,
+                            wave_stats_depth_m_ahd, aep_percent, ari_years, notes,
+                            created_at, updated_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            number,
+                            condition.get("target_hs_m"),
+                            condition.get("target_tp_s"),
+                            condition.get("water_level_m_ahd"),
+                            condition.get("wave_stats_depth_m_ahd"),
+                            condition.get("aep_percent"),
+                            condition.get("ari_years"),
+                            str(condition.get("notes", "")).strip(),
+                            now,
+                            now,
+                        ),
+                    )
+                connection.execute(
+                    """UPDATE project
+                       SET wave_conditions_filename = ?, updated_at = ?
+                       WHERE id = 1""",
+                    (Path(source_filename).name, now),
+                )
+                connection.commit()
+        except sqlite3.IntegrityError as exc:
+            raise ProjectError(f"Wave-condition CSV values are invalid: {exc}") from exc
+
+    def set_model_scale(self, denominator: float | None) -> None:
+        if denominator is not None and denominator <= 0:
+            raise ProjectError("Project scale must be greater than zero.")
+        now = utc_now()
+        with closing(self._connect()) as connection:
+            connection.execute(
+                """UPDATE project
+                   SET model_scale_denominator = ?, updated_at = ?
+                   WHERE id = 1""",
+                (denominator, now),
+            )
+            connection.commit()
 
     def model_design_state(self) -> dict[str, Any] | None:
         with closing(self._connect()) as connection:

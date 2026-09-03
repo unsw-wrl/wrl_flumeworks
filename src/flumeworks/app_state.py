@@ -155,6 +155,33 @@ class ApplicationState:
             self._dirty = True
             return condition
 
+    def update_design_condition(self, condition_id: int, **values: Any) -> dict[str, Any]:
+        with self._lock:
+            condition = self._require_editable().update_design_condition(condition_id, **values)
+            self._dirty = True
+            return condition
+
+    def delete_design_condition(self, condition_id: int) -> None:
+        with self._lock:
+            self._require_editable().delete_design_condition(condition_id)
+            self._dirty = True
+
+    def replace_design_conditions(
+        self, conditions: list[dict[str, Any]], *, source_filename: str
+    ) -> dict[str, Any]:
+        with self._lock:
+            self._require_editable().replace_design_conditions(
+                conditions, source_filename=source_filename
+            )
+            self._dirty = True
+            return self.current_payload()
+
+    def set_model_scale(self, denominator: float | None) -> dict[str, Any]:
+        with self._lock:
+            self._require_editable().set_model_scale(denominator)
+            self._dirty = True
+            return self.current_payload()
+
     def save_model_design(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             database = self._require_editable()
@@ -251,4 +278,3 @@ class ApplicationState:
         self._heartbeat.join(timeout=2)
         with self._lock:
             self.close_current(save=True)
-

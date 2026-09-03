@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from .app_state import ApplicationState
 from .project_store import ProjectError, ProjectExistsError, ProjectLockedError
@@ -33,9 +33,42 @@ class DesignConditionRequest(BaseModel):
     target_hs_m: float | None = Field(default=None, ge=0)
     target_tp_s: float | None = Field(default=None, gt=0)
     water_level_m_ahd: float | None = None
+    wave_stats_depth_m_ahd: float | None = None
     aep_percent: float | None = Field(default=None, gt=0, le=100)
     ari_years: float | None = Field(default=None, gt=0)
     notes: str = Field(default="", max_length=4000)
+
+    @model_validator(mode="after")
+    def water_level_above_stats_depth(self) -> "DesignConditionRequest":
+        if (
+            self.water_level_m_ahd is not None
+            and self.wave_stats_depth_m_ahd is not None
+            and self.water_level_m_ahd <= self.wave_stats_depth_m_ahd
+        ):
+            raise ValueError("Water level must be above the wave-stats depth.")
+        return self
+
+
+class DesignConditionImportRequest(BaseModel):
+    source_filename: str = Field(default="", max_length=260)
+    conditions: list[DesignConditionRequest] = Field(min_length=1, max_length=10000)
+
+    @model_validator(mode="after")
+    def complete_wave_rows(self) -> "DesignConditionImportRequest":
+        for condition in self.conditions:
+            required = (
+                condition.target_hs_m,
+                condition.target_tp_s,
+                condition.water_level_m_ahd,
+                condition.wave_stats_depth_m_ahd,
+            )
+            if any(value is None for value in required):
+                raise ValueError("Imported wave conditions require Hs, Tp, water level, and wave-stats depth.")
+        return self
+
+
+class ProjectScaleRequest(BaseModel):
+    denominator: float | None = Field(default=None, gt=0, le=10000)
 
 
 class ModelDesignStateRequest(BaseModel):
@@ -51,7 +84,7 @@ def project_http_error(exc: ProjectError) -> HTTPException:
 
 
 def create_app(state: ApplicationState) -> FastAPI:
-    app = FastAPI(title="WRL FlumeWorks", version="0.2.0", docs_url=None, redoc_url=None)
+    app = FastAPI(title="WRL FlumeWorks", version="0.3.0", docs_url=None, redoc_url=None)
     app.mount("/assets", StaticFiles(directory=FRONTEND_ROOT / "assets"), name="assets")
 
     @app.get("/api/health")
@@ -111,6 +144,43 @@ def create_app(state: ApplicationState) -> FastAPI:
             raise project_http_error(exc) from exc
         return {"condition": condition, "currentProject": state.current_payload()}
 
+    @app.put("/api/design-conditions/import")
+    def import_design_conditions(request: DesignConditionImportRequest) -> dict[str, object]:
+        try:
+            current = state.replace_design_conditions(
+                [condition.model_dump() for condition in request.conditions],
+                source_filename=request.source_filename,
+            )
+        except ProjectError as exc:
+            raise project_http_error(exc) from exc
+        return {"currentProject": current, "importedCount": len(request.conditions)}
+
+    @app.put("/api/design-conditions/{condition_id}")
+    def update_design_condition(
+        condition_id: int, request: DesignConditionRequest
+    ) -> dict[str, object]:
+        try:
+            condition = state.update_design_condition(condition_id, **request.model_dump())
+        except ProjectError as exc:
+            raise project_http_error(exc) from exc
+        return {"condition": condition, "currentProject": state.current_payload()}
+
+    @app.delete("/api/design-conditions/{condition_id}")
+    def delete_design_condition(condition_id: int) -> dict[str, object]:
+        try:
+            state.delete_design_condition(condition_id)
+        except ProjectError as exc:
+            raise project_http_error(exc) from exc
+        return {"currentProject": state.current_payload()}
+
+    @app.put("/api/project-scale")
+    def set_project_scale(request: ProjectScaleRequest) -> dict[str, object]:
+        try:
+            current = state.set_model_scale(request.denominator)
+        except ProjectError as exc:
+            raise project_http_error(exc) from exc
+        return {"currentProject": current}
+
     @app.put("/api/model-design")
     def save_model_design(request: ModelDesignStateRequest) -> dict[str, object]:
         try:
@@ -124,4 +194,3 @@ def create_app(state: ApplicationState) -> FastAPI:
         return FileResponse(FRONTEND_ROOT / "index.html")
 
     return app
-

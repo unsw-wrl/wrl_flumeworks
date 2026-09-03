@@ -48,9 +48,33 @@ def test_project_model_design_save_and_backup_workflow(tmp_path: Path) -> None:
 
         condition = client.post(
             "/api/design-conditions",
-            json={"condition_number": "DC1", "target_hs_m": 4.2, "target_tp_s": 12.5},
+            json={"condition_number": "DC1", "target_hs_m": 4.2, "target_tp_s": 12.5, "water_level_m_ahd": 1.2, "wave_stats_depth_m_ahd": -15},
         )
         assert condition.status_code == 201
+
+        condition_id = condition.json()["condition"]["id"]
+        updated = client.put(
+            f"/api/design-conditions/{condition_id}",
+            json={"condition_number": "DC1", "target_hs_m": 4.4, "target_tp_s": 12.6, "water_level_m_ahd": 1.3, "wave_stats_depth_m_ahd": -14.5},
+        )
+        assert updated.status_code == 200
+        assert updated.json()["condition"]["target_hs_m"] == 4.4
+
+        imported = client.put(
+            "/api/design-conditions/import",
+            json={"source_filename": "wave_conditions.csv", "conditions": [{"condition_number": "4", "target_hs_m": 6.9, "target_tp_s": 14.2, "water_level_m_ahd": 1.58, "wave_stats_depth_m_ahd": -15, "ari_years": 600}]},
+        )
+        assert imported.status_code == 200
+        assert imported.json()["currentProject"]["project"]["wave_conditions_filename"] == "wave_conditions.csv"
+
+        scaled = client.put("/api/project-scale", json={"denominator": 50})
+        assert scaled.status_code == 200
+        assert scaled.json()["currentProject"]["project"]["model_scale_denominator"] == 50
+
+        imported_id = imported.json()["currentProject"]["designConditions"][0]["id"]
+        deleted = client.delete(f"/api/design-conditions/{imported_id}")
+        assert deleted.status_code == 200
+        assert deleted.json()["currentProject"]["designConditions"] == []
 
         saved = client.post("/api/projects/save")
         assert saved.status_code == 200
@@ -87,4 +111,3 @@ def test_frontend_shell_is_served(tmp_path: Path) -> None:
         assert "Model Design" in response.text
     finally:
         state.shutdown()
-
