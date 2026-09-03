@@ -16,10 +16,17 @@ without growing Model Design into a monolith.
 
 ## Project data
 
-Each physical-model project is a directory containing `project.flumeworks`, a SQLite database.
-SQLite was selected over one large CSV because the planned system has related data sets: projects,
-design conditions, DAQ files, channels, calibrations, processing runs, results, and audit history.
-CSV remains an import/export format for engineers and existing instruments.
+Each physical-model project is a single portable `.flumeworks` SQLite database at a location chosen
+by the user. SQLite was selected over one large CSV because the planned system has related data
+sets: projects, design conditions, Model Design state, DAQ files, channels, calibrations, processing
+runs, results, and audit history. CSV remains an import/export format for engineers and existing
+instruments; large time-series files remain external and are referenced by the project.
+
+For responsive network-drive use, the application takes an atomic sidecar lease and copies the
+database to a per-computer working cache. Save and close use SQLite's online-backup mechanism to
+produce a verified snapshot at the selected project path. An adjacent `flumeworks_backups` folder
+contains user-requested timestamped snapshots. Recent paths are machine-local preferences, not
+project data.
 
 Schema changes are versioned. Application runs record the FlumeWorks version and Git commit in the
 active project database, providing the start of the requested processing audit trail.
@@ -31,7 +38,8 @@ on their own loopback port and are displayed by the shell in an iframe. This del
 the proven tool while the surrounding program evolves. See `src/flumeworks/model_design/UPSTREAM.md`
 for its exact provenance and integrity hashes.
 
-Model Design project JSON remains its current portable format in this milestone. Linking its state
-to the new project database is a later migration step and should be implemented through an adapter,
-not by silently changing the imported viewer.
-
+The shell and viewer exchange versioned Model Design state through a narrow `postMessage` bridge.
+The complete viewer state—including flume/CAD reference data, bathymetry, placement, wave
+conditions, layer visibility, and model settings—is stored in the active `.flumeworks` database.
+Model Design JSON remains available as a workspace-only import/export format and is deliberately
+labelled separately from the complete project file.

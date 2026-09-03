@@ -241,8 +241,8 @@
     <details class="section panel">
       <summary>Export &amp; share</summary><div class="panel-body">
         <input id="projectFile" type="file" accept=".json,application/json" hidden>
-        <p>Save the current setup, then load it in another copy of this HTML viewer.</p>
-        <div class="row"><button id="exportProject" class="primary grow">Export project JSON</button><button id="loadProject" class="grow">Load project JSON</button></div>
+        <p>Export or import the Model Design setup separately from the active <code>.flumeworks</code> project.</p>
+        <div class="row"><button id="exportProject" class="primary grow">Export model design</button><button id="loadProject" class="grow">Import model design</button></div>
         <div class="row"><button id="exportCsv">Scaled model CSV</button><button id="exportSvg">Current view SVG</button></div>
         <div class="row"><button id="exportDxf" class="primary grow">Export bathy for AutoCAD</button><button id="exportDxfInfo" class="info-button" type="button" aria-label="How to add the bathymetry to an existing AutoCAD drawing" aria-controls="exportDxfHelp" aria-expanded="false" title="AutoCAD transfer instructions">i</button></div>
         <div id="exportDxfHelp" class="export-help" hidden>
@@ -1452,8 +1452,8 @@ function projectNumber(value,label,test=()=>true) {
 }
 
 function parseProjectState(text) {
-  let data;try{data=JSON.parse(String(text).replace(/^\uFEFF/,""));}catch{throw new Error("Project file is not valid JSON.");}
-  projectObject(data,"Project file");
+  let data;try{data=JSON.parse(String(text).replace(/^\uFEFF/,""));}catch{throw new Error("Model Design file is not valid JSON.");}
+  projectObject(data,"Model Design file");
   if(data.format!==PROJECT_FILE_FORMAT)throw new Error("This is not a Wave Flume Viewer project file.");
   if(Number(data.version)!==PROJECT_FILE_VERSION)throw new Error(`Project version ${data.version??"—"} is not supported by this viewer.`);
 
@@ -1523,7 +1523,7 @@ function applyProjectState(project,fileName) {
   renderTable();renderFixedWaterLevelList();redrawFixedWaterLevels();renderWaveConditionList();updateBatterUI();updateRightExtensionUI();updatePlacementUI();redrawBathymetry();refreshModelEngineUI();
   view=project.view?{...project.view}:{...fitView};applyView();
   const drawingWarning=project.sourceDrawing&&project.sourceDrawing!==CAD_META.sourceFile?` Warning: this project was saved against ${project.sourceDrawing}, while this viewer contains ${CAD_META.sourceFile}.`:"";
-  setStatus(`Loaded project ${fileName}: ${bathy.length} bathymetry points, ${waveConditions.length} wave conditions, scale 1:${scaleDenominator}.${drawingWarning}`,drawingWarning?"error":"success");
+  setStatus(`Loaded Model Design ${fileName}: ${bathy.length} bathymetry points, ${waveConditions.length} wave conditions, scale 1:${scaleDenominator}.${drawingWarning}`,drawingWarning?"error":"success");
 }
 
 function localFilenameTimestamp(date=new Date()) {
@@ -1533,15 +1533,15 @@ function localFilenameTimestamp(date=new Date()) {
 
 function exportProjectJSON() {
   const project=createProjectState(),stamp=localFilenameTimestamp();
-  downloadText(`wave_flume_project_${stamp}.json`,JSON.stringify(project,null,2)+"\n","application/json;charset=utf-8");
-  setStatus("Exported a portable project JSON containing the bathymetry, placement, display layers, water levels and wave conditions.","success");
+  downloadText(`wave_flume_model_design_${stamp}.json`,JSON.stringify(project,null,2)+"\n","application/json;charset=utf-8");
+  setStatus("Exported Model Design JSON containing the flume reference, bathymetry, placement, display layers, water levels and wave conditions.","success");
 }
 
 function loadProjectFile(file) {
-  if(modelJobRunning){setStatus("Wait for the local wave-model calculation to finish before loading a project.","error");return;}
-  if(file.size>5_000_000){setStatus("Project JSON is larger than 5 MB and was not loaded.","error");return;}
-  const reader=new FileReader();reader.onerror=()=>setStatus(`Could not read ${file.name}. The current project is unchanged.`,"error");
-  reader.onload=()=>{try{const project=parseProjectState(reader.result);applyProjectState(project,file.name);}catch(error){setStatus(`${error.message} The current project is unchanged.`,"error");}};
+  if(modelJobRunning){setStatus("Wait for the local wave-model calculation to finish before importing Model Design.","error");return;}
+  if(file.size>5_000_000){setStatus("Model Design JSON is larger than 5 MB and was not loaded.","error");return;}
+  const reader=new FileReader();reader.onerror=()=>setStatus(`Could not read ${file.name}. The current Model Design is unchanged.`,"error");
+  reader.onload=()=>{try{const project=parseProjectState(reader.result);applyProjectState(project,file.name);}catch(error){setStatus(`${error.message} The current Model Design is unchanged.`,"error");}};
   reader.readAsText(file,"UTF-8");
 }
 
@@ -1679,6 +1679,25 @@ svg.addEventListener("pointerup",finishPan); svg.addEventListener("pointercancel
 svg.addEventListener("mousedown",event=>{if(event.button===1)event.preventDefault();});
 svg.addEventListener("auxclick",event=>{if(event.button===1)event.preventDefault();});
 
+let flumeworksDefaultModelDesignState=null;
+window.addEventListener("message",event=>{
+  if(event.source!==window.parent||!event.data||typeof event.data.type!=="string")return;
+  if(event.data.type==="flumeworks:capture-model-design"){
+    window.parent.postMessage({type:"flumeworks:model-design-state",requestId:event.data.requestId,state:createProjectState()},"*");
+    return;
+  }
+  if(event.data.type==="flumeworks:load-model-design"){
+    if(modelJobRunning){window.parent.postMessage({type:"flumeworks:model-design-error",message:"Wait for the running wave model before changing projects."},"*");return;}
+    try{
+      const rawState=event.data.state||flumeworksDefaultModelDesignState;
+      if(!rawState)throw new Error("The embedded default Model Design is not ready.");
+      const project=parseProjectState(JSON.stringify(rawState));
+      applyProjectState(project,event.data.state?"from the active .flumeworks project":"defaults for the active project");
+      window.parent.postMessage({type:"flumeworks:model-design-loaded"},"*");
+    }catch(error){window.parent.postMessage({type:"flumeworks:model-design-error",message:error.message},"*");}
+  }
+});
+
 $("loadCsv").addEventListener("click",()=>$("csvFile").click());
 $("csvFile").addEventListener("change",event=>{const file=event.target.files[0];if(file)loadCsvFile(file);event.target.value="";});
 $("restoreDefault").addEventListener("click",()=>{bathy=DEFAULT_BATHY.map(item=>({...item}));loadedFilename=DEFAULT_FILE;renderTable();redrawBathymetry();setStatus("Restored the embedded default bathymetry.","success");});
@@ -1721,6 +1740,8 @@ new ResizeObserver(refreshScreenSizedSymbols).observe(viewer);
 
 $("canvasBackground").setAttribute("x",metaView.x); $("canvasBackground").setAttribute("y",metaView.y); $("canvasBackground").setAttribute("width",metaView.width); $("canvasBackground").setAttribute("height",metaView.height);
 initialiseLayers(); renderTable(); renderFixedWaterLevelList(); redrawFixedWaterLevels(); renderWaveConditionList(); resetView(); updatePlacementUI(); updateBatterUI(); updateRightExtensionUI(); updateMeasureUI(); renderMeasurement(); redrawBathymetry();
+flumeworksDefaultModelDesignState=createProjectState();
+if(window.parent!==window)window.parent.postMessage({type:"flumeworks:model-design-ready"},"*");
 setStatus(`Ready. ${CAD_META.entityCount || ""} CAD entities, embedded bathymetry, and ${waveConditions.length} wave conditions are available. Set chainage 0 to place the profile.`);
 checkModelService();
 </script>

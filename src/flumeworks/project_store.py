@@ -1,16 +1,22 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import os
 import re
+import socket
 import sqlite3
 import uuid
+from contextlib import closing
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 1
-PROJECT_FILENAME = "project.flumeworks"
+SCHEMA_VERSION = 2
+PROJECT_EXTENSION = ".flumeworks"
+BACKUP_FOLDER_NAME = "flumeworks_backups"
 FACILITIES = {
     "flume_0_9m": "0.9 m wave flume",
     "flume_1_2m": "1.2 m wave flume",
@@ -24,7 +30,19 @@ class ProjectError(ValueError):
 
 
 class ProjectExistsError(ProjectError):
-    """Raised when project creation would overwrite existing content."""
+    """Raised when project creation would overwrite an existing file."""
+
+
+class ProjectLockedError(ProjectError):
+    """Raised when another FlumeWorks session owns the project lease."""
+
+    def __init__(self, path: Path, owner: dict[str, Any]):
+        self.path = path
+        self.owner = owner
+        user = owner.get("userName") or "another user"
+        computer = owner.get("computerName") or "another computer"
+        opened = owner.get("openedAt") or "an unknown time"
+        super().__init__(f"This project is locked by {user} on {computer} (opened {opened}).")
 
 
 @dataclass(frozen=True)
@@ -50,6 +68,13 @@ def project_slug(project_number: str, name: str) -> str:
     if not slug:
         raise ProjectError("Project name or project number must contain a letter or number.")
     return slug[:100]
+
+
+def normalise_project_path(path: str | Path) -> Path:
+    value = Path(path).expanduser()
+    if value.suffix.lower() != PROJECT_EXTENSION:
+        value = value.with_suffix(PROJECT_EXTENSION)
+    return value.resolve()
 
 
 SCHEMA_SQL = """
@@ -93,7 +118,22 @@ CREATE TABLE application_run (
     user_name TEXT NOT NULL
 );
 
+CREATE TABLE model_design_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    payload_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE INDEX design_condition_project_idx ON design_condition(project_id, condition_number);
+"""
+
+
+MIGRATION_1_TO_2 = """
+CREATE TABLE model_design_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    payload_json TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 """
 
 
@@ -102,7 +142,7 @@ class ProjectDatabase:
         self.path = Path(path).resolve()
         if not self.path.is_file():
             raise ProjectError(f"Project database does not exist: {self.path}")
-        self._verify()
+        self._verify_and_migrate()
 
     @classmethod
     def create(
@@ -116,7 +156,7 @@ class ProjectDatabase:
     ) -> "ProjectDatabase":
         destination = Path(path).resolve()
         if destination.exists():
-            raise ProjectExistsError(f"Project database already exists: {destination}")
+            raise ProjectExistsError(f"Project file already exists; nothing was overwritten: {destination}")
         if facility not in FACILITIES:
             raise ProjectError("Select a recognised WRL physical-model facility.")
         clean_name = name.strip()
@@ -126,6 +166,7 @@ class ProjectDatabase:
         connection = sqlite3.connect(destination)
         try:
             connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("PRAGMA journal_mode = DELETE")
             connection.executescript(SCHEMA_SQL)
             now = utc_now()
             connection.execute(
@@ -142,10 +183,7 @@ class ProjectDatabase:
             connection.commit()
         except Exception:
             connection.close()
-            try:
-                destination.unlink(missing_ok=True)
-            except OSError:
-                pass
+            destination.unlink(missing_ok=True)
             raise
         else:
             connection.close()
@@ -157,10 +195,19 @@ class ProjectDatabase:
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
 
-    def _verify(self) -> None:
+    def _verify_and_migrate(self) -> None:
         try:
-            with self._connect() as connection:
-                version = connection.execute("PRAGMA user_version").fetchone()[0]
+            with closing(self._connect()) as connection:
+                version = int(connection.execute("PRAGMA user_version").fetchone()[0])
+                if version == 1:
+                    connection.executescript(MIGRATION_1_TO_2)
+                    connection.execute(
+                        "INSERT INTO schema_migration(version, applied_at) VALUES (?, ?)",
+                        (2, utc_now()),
+                    )
+                    connection.execute("PRAGMA user_version = 2")
+                    connection.commit()
+                    version = 2
                 row = connection.execute("SELECT uuid FROM project WHERE id = 1").fetchone()
         except sqlite3.Error as exc:
             raise ProjectError(f"Could not open FlumeWorks project {self.path}: {exc}") from exc
@@ -170,7 +217,7 @@ class ProjectDatabase:
             )
 
     def project(self) -> ProjectRecord:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             row = connection.execute("SELECT * FROM project WHERE id = 1").fetchone()
         if row is None:
             raise ProjectError("Project metadata is missing.")
@@ -190,7 +237,7 @@ class ProjectDatabase:
         return asdict(self.project())
 
     def design_conditions(self) -> list[dict[str, Any]]:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             rows = connection.execute(
                 """SELECT id, condition_number, target_hs_m, target_tp_s,
                           water_level_m_ahd, aep_percent, ari_years, notes,
@@ -216,7 +263,7 @@ class ProjectDatabase:
             raise ProjectError("Design condition number is required.")
         now = utc_now()
         try:
-            with self._connect() as connection:
+            with closing(self._connect()) as connection:
                 cursor = connection.execute(
                     """INSERT INTO design_condition
                        (condition_number, target_hs_m, target_tp_s, water_level_m_ahd,
@@ -238,11 +285,43 @@ class ProjectDatabase:
                 row = connection.execute(
                     "SELECT * FROM design_condition WHERE id = ?", (cursor.lastrowid,)
                 ).fetchone()
+                connection.commit()
         except sqlite3.IntegrityError as exc:
             if "UNIQUE" in str(exc).upper():
                 raise ProjectError(f"Design condition {number} already exists.") from exc
             raise ProjectError(f"Design condition values are invalid: {exc}") from exc
         return dict(row) if row else {}
+
+    def model_design_state(self) -> dict[str, Any] | None:
+        with closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT payload_json FROM model_design_state WHERE id = 1"
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            payload = json.loads(row["payload_json"])
+        except json.JSONDecodeError as exc:
+            raise ProjectError("The saved Model Design state is invalid.") from exc
+        return payload if isinstance(payload, dict) else None
+
+    def save_model_design_state(self, payload: dict[str, Any]) -> None:
+        if not isinstance(payload, dict):
+            raise ProjectError("Model Design state must be a JSON object.")
+        encoded = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        if len(encoded.encode("utf-8")) > 20_000_000:
+            raise ProjectError("Model Design state is larger than the 20 MB project limit.")
+        now = utc_now()
+        with closing(self._connect()) as connection:
+            connection.execute(
+                """INSERT INTO model_design_state(id, payload_json, updated_at)
+                   VALUES (1, ?, ?)
+                   ON CONFLICT(id) DO UPDATE SET payload_json=excluded.payload_json,
+                                                 updated_at=excluded.updated_at""",
+                (encoded, now),
+            )
+            connection.execute("UPDATE project SET updated_at = ? WHERE id = 1", (now,))
+            connection.commit()
 
     def record_application_run(
         self,
@@ -252,55 +331,150 @@ class ProjectDatabase:
         computer_name: str,
         user_name: str,
     ) -> None:
-        with self._connect() as connection:
+        with closing(self._connect()) as connection:
             connection.execute(
                 """INSERT INTO application_run
                    (started_at, app_version, git_commit, computer_name, user_name)
                    VALUES (?, ?, ?, ?, ?)""",
                 (utc_now(), app_version, git_commit, computer_name, user_name),
             )
+            connection.commit()
 
 
-class ProjectCatalog:
-    def __init__(self, root: str | Path):
-        self.root = Path(root).resolve()
+def snapshot_database(source: str | Path, destination: str | Path, *, replace: bool) -> Path:
+    source_path = Path(source).resolve()
+    destination_path = Path(destination).resolve()
+    if not source_path.is_file():
+        raise ProjectError(f"Project source does not exist: {source_path}")
+    if destination_path.exists() and not replace:
+        raise ProjectExistsError(f"Backup already exists; nothing was overwritten: {destination_path}")
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination_path.with_name(f".{destination_path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        source_connection = sqlite3.connect(source_path)
+        destination_connection = sqlite3.connect(temporary)
+        try:
+            source_connection.backup(destination_connection)
+            result = destination_connection.execute("PRAGMA integrity_check").fetchone()
+            if not result or result[0] != "ok":
+                raise ProjectError("The project snapshot failed its database integrity check.")
+        finally:
+            destination_connection.close()
+            source_connection.close()
+        if destination_path.exists() and not replace:
+            raise ProjectExistsError(f"Backup already exists; nothing was overwritten: {destination_path}")
+        if replace:
+            os.replace(temporary, destination_path)
+        else:
+            temporary.rename(destination_path)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
+    return destination_path
 
-    def create(
-        self,
-        *,
-        name: str,
-        project_number: str,
-        facility: str,
-        description: str = "",
-    ) -> ProjectDatabase:
-        folder = self.root / project_slug(project_number, name)
-        database_path = folder / PROJECT_FILENAME
-        if database_path.exists() or (folder.exists() and any(folder.iterdir())):
-            raise ProjectExistsError(
-                f"Project folder already contains files; nothing was overwritten: {folder}"
-            )
-        return ProjectDatabase.create(
-            database_path,
-            name=name,
-            project_number=project_number,
-            facility=facility,
-            description=description,
-        )
+
+class ProjectLease:
+    def __init__(self, project_path: str | Path, *, app_version: str):
+        self.project_path = Path(project_path).resolve()
+        self.path = self.project_path.with_name(self.project_path.name + ".lock")
+        self.token = uuid.uuid4().hex
+        now = utc_now()
+        self.payload: dict[str, Any] = {
+            "format": "wrl-flumeworks-lock",
+            "token": self.token,
+            "projectPath": str(self.project_path),
+            "userName": os.environ.get("USERNAME") or os.environ.get("USER") or "unknown",
+            "computerName": socket.gethostname(),
+            "processId": os.getpid(),
+            "appVersion": app_version,
+            "openedAt": now,
+            "lastHeartbeat": now,
+        }
+        self.acquired = False
+
+    @staticmethod
+    def read_owner(path: Path) -> dict[str, Any]:
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+            return value if isinstance(value, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    def acquire(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        encoded = json.dumps(self.payload, indent=2) + "\n"
+        try:
+            descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError as exc:
+            raise ProjectLockedError(self.project_path, self.read_owner(self.path)) from exc
+        try:
+            with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                stream.write(encoded)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except Exception:
+            self.path.unlink(missing_ok=True)
+            raise
+        self.acquired = True
+
+    def refresh(self) -> None:
+        if not self.acquired:
+            return
+        owner = self.read_owner(self.path)
+        if owner.get("token") != self.token:
+            self.acquired = False
+            raise ProjectLockedError(self.project_path, owner)
+        self.payload["lastHeartbeat"] = utc_now()
+        temporary = self.path.with_name(f".{self.path.name}.{self.token}.tmp")
+        temporary.write_text(json.dumps(self.payload, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, self.path)
+
+    def release(self) -> None:
+        if not self.acquired:
+            return
+        owner = self.read_owner(self.path)
+        if owner.get("token") == self.token:
+            self.path.unlink(missing_ok=True)
+        self.acquired = False
+
+
+class RecentProjects:
+    def __init__(self, state_root: str | Path):
+        self.path = Path(state_root).resolve() / "recent_projects.json"
+
+    def _read(self) -> list[dict[str, Any]]:
+        try:
+            value = json.loads(self.path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return []
+        return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 
     def list(self) -> list[dict[str, Any]]:
-        if not self.root.is_dir():
-            return []
-        projects: list[dict[str, Any]] = []
-        for path in sorted(self.root.glob(f"*/{PROJECT_FILENAME}")):
-            try:
-                projects.append(ProjectDatabase(path).project_dict())
-            except ProjectError:
-                continue
-        return sorted(projects, key=lambda item: item["updated_at"], reverse=True)
+        result = []
+        for item in self._read():
+            path = Path(str(item.get("path", "")))
+            result.append({**item, "available": path.is_file()})
+        return result
 
-    def open_uuid(self, project_uuid: str) -> ProjectDatabase:
-        for project in self.list():
-            if project["uuid"] == project_uuid:
-                return ProjectDatabase(project["database_path"])
-        raise ProjectError("The selected project was not found in the configured project folder.")
+    def add(self, database: ProjectDatabase, source_path: str | Path) -> None:
+        project = database.project()
+        source = str(Path(source_path).resolve())
+        item = {
+            "uuid": project.uuid,
+            "name": project.name,
+            "project_number": project.project_number,
+            "facility_name": project.facility_name,
+            "path": source,
+            "lastOpened": utc_now(),
+        }
+        existing = [entry for entry in self._read() if str(entry.get("path", "")).lower() != source.lower()]
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.path.with_suffix(".tmp")
+        temporary.write_text(json.dumps([item, *existing][:20], indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, self.path)
 
+
+def local_working_path(state_root: str | Path, source_path: str | Path) -> Path:
+    source = str(Path(source_path).resolve()).lower().encode("utf-8")
+    identity = hashlib.sha256(source).hexdigest()[:20]
+    return Path(state_root).resolve() / "workspaces" / identity / "working.flumeworks"

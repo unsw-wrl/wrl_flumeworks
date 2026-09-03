@@ -48,25 +48,28 @@
               </div>
               <label>Project name<input name="name" maxlength="200" required placeholder="e.g. Bronte seawall physical model"></label>
               <label>Description<textarea name="description" rows="3" maxlength="4000" placeholder="Optional short project description"></textarea></label>
-              <p class="hint">Projects are created under <code id="projectRoot">—</code>. Existing folders and databases are never overwritten.</p>
+              <label>Project file<div class="file-picker"><input id="newProjectPath" name="destination_path" readonly required placeholder="Choose a .flumeworks file location"><button id="chooseNewProjectPath" class="secondary" type="button">Browse…</button></div></label>
+              <p class="hint">The <code>.flumeworks</code> file can be stored in any local or network folder. FlumeWorks will not overwrite an existing file.</p>
               <button class="primary" type="submit">Create and open project</button>
             </form>
           </section>
 
           <section class="card">
-            <div class="card-heading"><div><p class="eyebrow">Recent projects</p><h2>Open an existing project</h2></div><button id="refreshProjects" class="secondary" type="button">Refresh</button></div>
+            <div class="card-heading"><div><p class="eyebrow">Recent projects</p><h2>Open an existing project</h2></div><div class="card-actions"><button id="openProjectFile" class="primary" type="button">Open file…</button><button id="refreshProjects" class="secondary" type="button">Refresh</button></div></div>
             <div id="projectList" class="project-list"><p class="empty">No FlumeWorks projects found yet.</p></div>
           </section>
         </div>
 
         <section id="currentProjectCard" class="card wide" hidden>
-          <div class="card-heading"><div><p class="eyebrow">Current project</p><h2 id="currentProjectName">—</h2></div><span id="currentFacility" class="pill">—</span></div>
+          <div class="card-heading"><div><p class="eyebrow">Current project</p><h2 id="currentProjectName">—</h2></div><div class="card-actions"><span id="saveState" class="pill">Saved</span><span id="currentFacility" class="pill">—</span></div></div>
           <dl class="project-details">
             <div><dt>Project number</dt><dd id="currentProjectNumber">—</dd></div>
-            <div><dt>Database</dt><dd id="currentDatabase">—</dd></div>
+            <div><dt>Project file</dt><dd id="currentDatabase">—</dd></div>
             <div><dt>Last updated</dt><dd id="currentUpdated">—</dd></div>
           </dl>
           <p id="currentDescription" class="description"></p>
+          <div class="project-actions"><button id="saveProject" class="primary" type="button">Save project</button><button id="backupProject" class="secondary" type="button">Generate backup</button><button id="closeProject" class="secondary" type="button">Close project</button></div>
+          <p class="hint">Edits use a fast local working copy. Saving updates the selected project file while its FlumeWorks lock is held.</p>
         </section>
 
         <section id="conditionCard" class="card wide" hidden>

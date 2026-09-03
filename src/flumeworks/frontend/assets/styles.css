@@ -12,3 +12,4 @@ body{background:#eff6fc}
 .sidebar-collapsed nav{padding:14px 10px}
 .sidebar-collapsed .nav-item{justify-content:center;padding:13px 4px}
 .sidebar-collapsed .nav-item>span{font-size:11px}
+.file-picker{display:flex;gap:8px}.file-picker input{min-width:0}.file-picker button{flex:0 0 auto}.card-actions,.project-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.project-actions{margin-top:16px}.project-list{overflow-x:hidden}.project-row>div{min-width:0;overflow:hidden}.project-row.unavailable{opacity:.62}.project-row small.path{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pill.unsaved{border-color:#71a5d7;background:#eff6fc;color:#005daa}

@@ -7,7 +7,7 @@ from flumeworks.model_design import wave_model_service
 
 
 EXPECTED_HASHES = {
-    "wave_flume_bathymetry_viewer.html": "2398328635217c33fc0e3bcb8817935f86be1e304da01332588f776a1effbb5b",
+    "wave_flume_bathymetry_viewer.html": "0308eed7493829484d8f5fd7e162878ae721f372b890f1e6fad70a79e7e9e6df",
     "wave_model_service.py": "26fa8ea2eba9b819a1bc3dc91098b02e6acca9ef8e8cb902bd34bc425b70b3e1",
 }
 

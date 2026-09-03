@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .api import create_app
 from .app_state import ApplicationState
+from .desktop_api import DesktopApi
 from .model_design_runtime import ModelDesignRuntime
 from .server_runtime import ApplicationServer
 from .settings import load_settings
@@ -45,17 +46,24 @@ def run(argv: list[str] | None = None) -> int:
         else:
             import webview
 
-            webview.create_window(
+            desktop_api = DesktopApi(state)
+            window = webview.create_window(
                 "WRL FlumeWorks",
                 application_server.url,
+                js_api=desktop_api,
                 width=1500,
                 height=950,
                 min_size=(1050, 700),
                 confirm_close=True,
             )
+            desktop_api.bind_window(window)
             webview.start()
         return 0
     finally:
+        try:
+            state.shutdown()
+        except Exception as exc:
+            print(f"Warning: the active project could not be saved during shutdown: {exc}", file=sys.stderr)
         application_server.stop()
         model_design.stop()
 
@@ -66,4 +74,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
