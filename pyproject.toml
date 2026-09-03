@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wrl-flumeworks"
+version = "0.1.0"
+description = "WRL desktop workspace for physical model design and data processing"
+readme = { text = "WRL FlumeWorks desktop workspace for physical modelling.", content-type = "text/plain" }
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "pywebview>=5.4",
+  "uvicorn>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27",
+  "pytest>=8.3",
+]
+
+[project.scripts]
+flumeworks = "flumeworks.app:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flumeworks"]
+
+[tool.hatch.build]
+include = [
+  "src/flumeworks/**/*.py",
+  "src/flumeworks/**/*.html",
+  "src/flumeworks/**/*.css",
+  "src/flumeworks/**/*.js",
+  "src/flumeworks/**/*.json",
+]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

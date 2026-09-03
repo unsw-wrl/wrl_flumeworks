@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Local application state and generated model output
+flumeworks_config.json
+src/flumeworks/model_design/wave_model_config.json
+src/flumeworks/model_design/wave_model_runs/
+projects/
+logs/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+

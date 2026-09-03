@@ -1,0 +1,9 @@
+{
+  "swanExecutable": "C:\\path\\to\\swan.exe",
+  "swashExecutable": "C:\\path\\to\\swash.exe",
+  "xbeachExecutable": "C:\\path\\to\\xbeach.exe",
+  "runtimePaths": [
+    "C:\\path\\to\\required-runtime-dlls"
+  ]
+}
+
