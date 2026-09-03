@@ -7,8 +7,8 @@ from flumeworks.model_design import wave_model_service
 
 
 EXPECTED_HASHES = {
-    "wave_flume_bathymetry_viewer.html": "81c5e92d1bb7cae7cdbc783b9b1acc1f9e41ea2684cc25f23c4957344f42a1e0",
-    "wave_model_service.py": "26fa8ea2eba9b819a1bc3dc91098b02e6acca9ef8e8cb902bd34bc425b70b3e1",
+    "wave_flume_bathymetry_viewer.html": "ff364e081950f3309fd89c745e05473d1d664617dc3badb438a0dd10e88da3cb",
+    "wave_model_service.py": "86ccaf3c952d30b73f13016e2793d4cf6ea288ad830f5ea19fd571877cb05005",
 }
 
 
@@ -23,3 +23,28 @@ def test_model_design_files_match_reviewed_snapshot() -> None:
     }
 
     assert actual == EXPECTED_HASHES
+
+
+def test_swan_breaking_coefficient_is_validated_and_preserved() -> None:
+    model_case = wave_model_service.validate_case(
+        {
+            "engine": "swan",
+            "bathymetry": [
+                {"chainage": 0, "elevation": -1},
+                {"chainage": 10, "elevation": -5},
+            ],
+            "conditions": [
+                {
+                    "conditionId": "1",
+                    "waterLevel": 1,
+                    "statsDepth": -4,
+                    "waveHeight": 1,
+                    "period": 8,
+                }
+            ],
+            "structure": {"toeChainage": 0},
+            "options": {"swanBreakingCoefficient": 0.65},
+        }
+    )
+
+    assert model_case["options"]["swanBreakingCoefficient"] == 0.65

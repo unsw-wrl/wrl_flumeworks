@@ -21,11 +21,14 @@
         <button class="nav-item" data-view="model-design" aria-selected="false" title="Model Design">
           <span>02</span><div><strong>Model Design</strong><small>Flume CAD and bathymetry</small></div>
         </button>
+        <button class="nav-item" data-view="tools" aria-selected="false" title="Tools">
+          <span>03</span><div><strong>Tools</strong><small>Wave transformation and overtopping</small></div>
+        </button>
       </nav>
       <div class="future-modules">
         <small>Future workspaces</small>
         <span>DAQ Import</span><span>Pre-processing &amp; QC</span><span>Wave Processing</span>
-        <span>Overtopping</span><span>Wave Loads</span><span>Stability</span>
+        <span>Wave Loads</span><span>Stability</span>
       </div>
       <footer><span id="appVersion">Version —</span><span id="gitCommit">Commit —</span></footer>
     </aside>
@@ -110,7 +113,28 @@
 
       <section id="modelDesignView" class="workspace model-design" aria-labelledby="modelDesignTitle">
         <div class="model-design-header"><div><p class="eyebrow">Workspace 02</p><h1 id="modelDesignTitle">Model Design</h1></div><span>Existing Wave Flume CAD &amp; Bathymetry viewer</span></div>
-        <iframe id="modelDesignFrame" title="Wave Flume CAD and Bathymetry Model Design"></iframe>
+        <div id="modelDesignFrameHost" class="model-frame-host"><iframe id="modelDesignFrame" title="Wave Flume CAD and Bathymetry Model Design"></iframe></div>
+      </section>
+
+      <section id="toolsView" class="workspace tools-workspace" aria-labelledby="toolsTitle">
+        <header class="tools-header">
+          <div><p class="eyebrow">Workspace 03</p><h1 id="toolsTitle">Tools</h1></div>
+          <nav class="tool-tabs" aria-label="Tools">
+            <button class="tool-tab active" type="button" data-tool-tab="wave-transformation" aria-selected="true">Wave transformation</button>
+            <button class="tool-tab" type="button" data-tool-tab="overtopping" aria-selected="false">Overtopping</button>
+          </nav>
+        </header>
+        <section id="waveTransformationPanel" class="tool-panel active" aria-label="Wave transformation">
+          <div id="waveTransformationFrameHost" class="model-frame-host"></div>
+        </section>
+        <section id="overtoppingPanel" class="tool-panel overtopping-workspace" aria-label="Overtopping">
+          <div class="tool-empty-state">
+            <span class="tool-empty-icon" aria-hidden="true">≈</span>
+            <p class="eyebrow">Overtopping estimates</p>
+            <h2>EurOtop and other methods will live here</h2>
+            <p>This separate workspace will use the project bathymetry, structure geometry and transformed wave conditions without crowding the model-design drawing.</p>
+          </div>
+        </section>
       </section>
     </main>
   </div>

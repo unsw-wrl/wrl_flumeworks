@@ -14,6 +14,55 @@ from .server_runtime import ApplicationServer
 from .settings import load_settings
 
 
+def _ask_save_before_closing(window: object) -> bool:
+    """Show a native Yes/No prompt without enabling pywebview's blanket quit dialog."""
+    if sys.platform == "win32" and getattr(window, "native", None) is not None:
+        from webview.platforms.winforms import WinForms
+
+        result = WinForms.MessageBox.Show(
+            window.native,
+            "Do you want to save before closing?",
+            "Unsaved project",
+            WinForms.MessageBoxButtons.YesNo,
+            WinForms.MessageBoxIcon.Question,
+        )
+        return result == WinForms.DialogResult.Yes
+    return bool(
+        window.create_confirmation_dialog(
+            "Unsaved project",
+            "Do you want to save before closing?",
+        )
+    )
+
+
+def handle_desktop_close(
+    state: ApplicationState,
+    window: object,
+    ask_to_save=None,
+) -> bool | None:
+    """Prepare state for a native close; returning False cancels pywebview closing."""
+    current = state.current_payload()
+    if current is None:
+        return None
+    try:
+        save = (
+            bool(ask_to_save(window) if ask_to_save else _ask_save_before_closing(window))
+            if current["dirty"]
+            else False
+        )
+        state.close_current(save=save)
+    except Exception as exc:
+        try:
+            window.create_confirmation_dialog(
+                "Could not close FlumeWorks",
+                f"The project could not be saved and closed:\n\n{exc}",
+            )
+        except Exception:
+            print(f"The project could not be saved and closed: {exc}", file=sys.stderr)
+        return False
+    return None
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="WRL FlumeWorks desktop application")
     parser.add_argument("--browser", action="store_true", help="Open in the system browser instead of pywebview")
@@ -54,9 +103,10 @@ def run(argv: list[str] | None = None) -> int:
                 width=1500,
                 height=950,
                 min_size=(1050, 700),
-                confirm_close=True,
+                confirm_close=False,
             )
             desktop_api._bind_window(window)
+            window.events.closing += lambda: handle_desktop_close(state, window)
             webview.start()
         return 0
     finally:

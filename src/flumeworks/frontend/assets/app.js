@@ -5,6 +5,7 @@ const SIDEBAR_STORAGE_KEY = "flumeworks.sidebarCollapsed";
 let bootstrap = null, modelDesignReady = false, loadedModelProject = "", lastModelDesignSignature = "", modelSyncBusy = false, captureSequence = 0;
 let conditionDisplayMode = "prototype", panelProjectIdentity = null;
 let conditionEditMode = false, conditionDraft = [], conditionDraftInitial = "", conditionDraftSequence = 0;
+let currentView = "project", activeToolTab = "wave-transformation";
 const captureRequests = new Map();
 
 function setSidebarCollapsed(collapsed) {
@@ -38,8 +39,17 @@ function textOrDash(value, suffix = "") { return value === null || value === und
 function numberOrNull(form, name) { const value = String(new FormData(form).get(name) || "").trim(); return value === "" ? null : Number(value); }
 
 function showView(name) {
+  currentView = name;
   document.querySelectorAll(".workspace").forEach(view => view.classList.toggle("active", view.id === `${name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}View`));
   document.querySelectorAll(".nav-item").forEach(button => { const active = button.dataset.view === name; button.classList.toggle("active", active); button.setAttribute("aria-selected", String(active)); });
+  placeModelDesignFrame();
+}
+
+function showToolTab(name) {
+  activeToolTab = name;
+  document.querySelectorAll(".tool-tab").forEach(button => { const active = button.dataset.toolTab === name; button.classList.toggle("active", active); button.setAttribute("aria-selected", String(active)); });
+  document.querySelectorAll(".tool-panel").forEach(panel => panel.classList.toggle("active", panel.id === `${name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}Panel`));
+  placeModelDesignFrame();
 }
 
 async function nativePath(method, ...args) {
@@ -292,6 +302,17 @@ function modelFrame() { return $("modelDesignFrame").contentWindow; }
 function modelOrigin() { return new URL(bootstrap.modelDesignUrl).origin; }
 function modelDesignSignature(state) { if (!state) return ""; const canonical = {...state}; delete canonical.exportedAt; return JSON.stringify(canonical); }
 
+function modelWorkspaceMode() { return currentView === "tools" && activeToolTab === "wave-transformation" ? "wave-transformation" : "model-design"; }
+
+function placeModelDesignFrame() {
+  const frame = $("modelDesignFrame"); if (!frame) return;
+  let host = null;
+  if (currentView === "model-design") host = $("modelDesignFrameHost");
+  if (currentView === "tools" && activeToolTab === "wave-transformation") host = $("waveTransformationFrameHost");
+  if (host && frame.parentElement !== host) host.appendChild(frame);
+  if (bootstrap && modelDesignReady) frame.contentWindow.postMessage({type: "flumeworks:set-workspace-mode", mode: modelWorkspaceMode()}, modelOrigin());
+}
+
 function sharedWaveConditions() {
   const current = bootstrap?.currentProject; if (!current) return [];
   return (current.designConditions || []).filter(condition => [condition.water_level_m_ahd, condition.wave_stats_depth_m_ahd, condition.target_hs_m, condition.target_tp_s].every(value => value !== null && value !== undefined && Number.isFinite(Number(value)))).map((condition, index) => ({
@@ -329,7 +350,10 @@ function renderBootstrap() {
   $("appVersion").textContent = `Version ${bootstrap.application.version}`; $("gitCommit").textContent = `Commit ${bootstrap.application.gitCommit}`;
   const facilities = $("facilitySelect"); facilities.replaceChildren();
   for (const facility of bootstrap.facilities) { const option = document.createElement("option"); option.value = facility.id; option.textContent = facility.name; facilities.appendChild(option); }
-  if (bootstrap.modelDesignUrl && $("modelDesignFrame").src !== bootstrap.modelDesignUrl) $("modelDesignFrame").src = bootstrap.modelDesignUrl;
+  if (bootstrap.modelDesignUrl && $("modelDesignFrame").dataset.baseUrl !== bootstrap.modelDesignUrl) {
+    const source = new URL(bootstrap.modelDesignUrl); source.searchParams.set("workspace", "model-design");
+    $("modelDesignFrame").src = source.href; $("modelDesignFrame").dataset.baseUrl = bootstrap.modelDesignUrl;
+  }
   renderProjects(); renderCurrentProject(); loadModelDesignForCurrentProject();
 }
 
@@ -389,6 +413,7 @@ function parseDesignConditionsCsv(text) {
 }
 
 document.querySelectorAll(".nav-item").forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
+document.querySelectorAll(".tool-tab").forEach(button => button.addEventListener("click", () => showToolTab(button.dataset.toolTab)));
 $("sidebarToggle").addEventListener("click", () => setSidebarCollapsed(!document.querySelector(".app-shell").classList.contains("sidebar-collapsed")));
 try { setSidebarCollapsed(localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true"); } catch { setSidebarCollapsed(false); }
 
@@ -466,7 +491,7 @@ $("closeProject").addEventListener("click", async () => {
 
 window.addEventListener("message", event => {
   if (!bootstrap || event.source !== modelFrame() || event.origin !== new URL(bootstrap.modelDesignUrl).origin || !event.data) return;
-  if (event.data.type === "flumeworks:model-design-ready") { modelDesignReady = true; loadedModelProject = ""; loadModelDesignForCurrentProject(true); }
+  if (event.data.type === "flumeworks:model-design-ready") { modelDesignReady = true; loadedModelProject = ""; placeModelDesignFrame(); loadModelDesignForCurrentProject(true); }
   if (event.data.type === "flumeworks:model-design-state") { const request = captureRequests.get(event.data.requestId); if (request) { captureRequests.delete(event.data.requestId); request.resolve(event.data.state); } }
   if (event.data.type === "flumeworks:model-design-error") setStatus(`Model Design: ${event.data.message}`, "error");
 });

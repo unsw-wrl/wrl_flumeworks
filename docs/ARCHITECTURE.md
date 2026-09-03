@@ -6,10 +6,13 @@ FlumeWorks is a Python application with a local FastAPI interface displayed in a
 window. This keeps the user experience close to the existing browser tool while allowing later DAQ,
 signal-processing, reporting, video, and model integrations to run in Python.
 
-The browser interface contains top-level workspaces. The first two are:
+The browser interface contains top-level workspaces. The first three are:
 
 - **Project** — project metadata, facility selection, and design wave conditions.
 - **Model Design** — the existing wave-flume CAD and bathymetry viewer.
+- **Tools** — full-screen engineering tools, currently organised into Wave Transformation and
+  Overtopping tabs. The transformation tab hosts SWAN, SWASH, and XBeach; Overtopping is reserved
+  for EurOtop and later methods.
 
 Future processing modules should be added as separate Python packages and top-level workspaces,
 without growing Model Design into a monolith.
@@ -34,8 +37,10 @@ active project database, providing the start of the requested processing audit t
 ## Model Design compatibility boundary
 
 The existing HTML viewer and Python model helper are kept in `src/flumeworks/model_design`. They run
-on their own loopback port and are displayed by the shell in an iframe. This deliberately isolates
-the proven tool while the surrounding program evolves. See `src/flumeworks/model_design/UPSTREAM.md`
+on their own loopback port and are displayed by the shell in an iframe. The shell moves one live
+iframe between Model Design and Tools, while a viewer presentation mode exposes only the controls
+appropriate to that workspace. This deliberately isolates the proven tool while the surrounding
+program evolves. See `src/flumeworks/model_design/UPSTREAM.md`
 for its exact provenance and integrity hashes.
 
 The shell and viewer exchange versioned Model Design state through a narrow `postMessage` bridge.

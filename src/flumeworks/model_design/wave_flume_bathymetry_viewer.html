@@ -133,6 +133,17 @@
   .measure-popup { position:absolute; z-index:5; display:none; max-width:320px; padding:8px 9px; border:1px solid #91b8d2; border-radius:6px; background:#f1f7fbeF; color:#29495f; box-shadow:0 3px 16px #0003; font-size:11px; font-variant-numeric:tabular-nums; pointer-events:none; }
   .measure-popup strong { color:#0f62a5; }
   .placement-message { position:absolute; left:50%; top:12px; transform:translateX(-50%); z-index:2; display:none; padding:7px 11px; border-radius:6px; color:#fff; background:#d64b27e8; font-weight:650; box-shadow:0 2px 9px #0003; pointer-events:none; }
+  body[data-workspace="model-design"] #localWaveModelPanel { display:none; }
+  body[data-workspace="wave-transformation"] .app { grid-template-columns:minmax(390px,470px) minmax(0,1fr); }
+  body[data-workspace="wave-transformation"] .sidebar > * { display:none; }
+  body[data-workspace="wave-transformation"] .sidebar > #waveConditionsPanel,
+  body[data-workspace="wave-transformation"] .sidebar > #localWaveModelPanel,
+  body[data-workspace="wave-transformation"] .sidebar > .sidebar-status { display:block; }
+  body[data-workspace="wave-transformation"] #localWaveModelPanel > summary { position:sticky; top:0; z-index:2; padding:16px; color:#fff; background:linear-gradient(135deg,#005daa,#2b7abd); font-size:16px; }
+  body[data-workspace="wave-transformation"] #localWaveModelPanel > summary::after { color:#fff; }
+  body[data-workspace="wave-transformation"] #localWaveModelPanel .panel-body { padding:8px 16px 18px; }
+  body[data-workspace="wave-transformation"] #waveConditionsPanel .wave-list { max-height:225px; }
+  body[data-workspace="wave-transformation"] .viewport-toolbar #toggleSidebar { display:none; }
   @media (max-width:800px) {
     .app { grid-template-columns:1fr; }
     .sidebar { position:absolute; inset:0 auto 0 0; width:min(330px,90vw); transform:translateX(-101%); transition:transform .2s; }
@@ -182,7 +193,7 @@
       </div>
     </details>
 
-    <details class="section panel">
+    <details id="waveConditionsPanel" class="section panel">
       <summary>Wave conditions</summary><div class="panel-body">
         <p>Wave conditions are managed in Project Setup and update here automatically.</p>
         <div class="file-name" id="waveFileName"></div><p id="waveSummary"></p>
@@ -190,8 +201,8 @@
       </div>
     </details>
 
-    <details class="section panel">
-      <summary>Local wave model</summary><div class="panel-body">
+    <details id="localWaveModelPanel" class="section panel">
+      <summary>Wave transformation</summary><div class="panel-body">
         <div id="modelConnectionState" class="connection-state"><span class="connection-dot"></span><span id="modelConnectionText">Checking local helper…</span></div>
         <div class="row"><button id="reconnectModelService">Reconnect</button></div>
         <div class="field"><label for="modelEngine">Transformation engine</label><select id="modelEngine" class="grow"><option value="swan">SWAN · 1D stationary</option><option value="swash">SWASH · 1D non-hydrostatic</option><option value="xbeach">XBeach · 1D surfbeat</option></select></div>
@@ -200,6 +211,7 @@
           <div class="field"><label for="seawallToeChainage">Seawall toe chainage (m)</label><input id="seawallToeChainage" type="number" step="any" value="0"></div>
           <div class="field"><label for="swanGridSpacing">Grid spacing (prototype m)</label><input id="swanGridSpacing" type="number" min="0.05" max="20" step="0.05" value="1"></div>
         </div>
+        <div id="swanSettings" class="field"><label for="swanBreakingCoefficient">Depth-induced breaking coefficient γ</label><input id="swanBreakingCoefficient" type="number" min="0.1" max="1.5" step="0.01" value="0.73"><p>SWAN uses this γ value in the Battjes–Janssen depth-induced breaking formulation. The default is 0.73.</p></div>
         <div id="swashSettings" hidden>
           <div class="field"><label for="swashAnalysisPeriods">SWASH analysis duration (× peak period)</label><input id="swashAnalysisPeriods" type="number" min="20" max="1000" step="1" value="100"><p>100 means 100 × Tp after a 20 × Tp spin-up. This is approximately 100 irregular waves, not an exact wave count. JONSWAP γ = 3.3 and a repeatable seed are used. SWASH recommends 100–300 × Tp; up to 1000 × Tp is supported but can be much slower.</p></div>
           <div class="field"><label for="swashAnimationPeriods">Surface animation — retain final peak periods</label><input id="swashAnimationPeriods" type="number" min="1" max="50" step="1" value="20"><p>Only this final window is retained across the profile. It is stored as a compressed file in the model run folder and loaded by the viewer on demand.</p></div>
@@ -323,6 +335,13 @@ const PROJECT_FILE_FORMAT = "wrl-wave-flume-viewer-project";
 const PROJECT_FILE_VERSION = 1;
 
 const $ = (id) => document.getElementById(id);
+let workspaceMode="standalone";
+function applyWorkspaceMode(mode){
+  workspaceMode=mode==="wave-transformation"?"wave-transformation":mode==="model-design"?"model-design":"standalone";
+  document.body.dataset.workspace=workspaceMode;
+  if(workspaceMode==="wave-transformation"){$("localWaveModelPanel").open=true;$("waveConditionsPanel").open=true;}
+  requestAnimationFrame(()=>{refreshScreenSizedSymbols();applyView();});
+}
 const svg = $("drawing");
 const viewer = $("viewer");
 const metaView = CAD_META.viewBox;
@@ -378,6 +397,7 @@ function modelEngineLabel(key=selectedModelEngine()){return key==="xbeach"?"XBea
 
 function refreshModelEngineUI(){
   const key=selectedModelEngine(),label=modelEngineLabel(key),engine=modelServiceHealth&&modelServiceHealth.engines&&modelServiceHealth.engines[key];
+  $("swanSettings").hidden=key!=="swan";
   $("swashSettings").hidden=key!=="swash";
   $("xbeachSettings").hidden=key!=="xbeach";
   if(!modelServiceHealth){
@@ -547,15 +567,16 @@ async function pollModelJob(){
 
 async function runLocalModel(){
   if(modelJobRunning)return;
-  const indices=[...activeWaveRows].sort((a,b)=>a-b),toeChainage=Number($("seawallToeChainage").value),gridSpacing=Number($("swanGridSpacing").value),swashPeriods=Number($("swashAnalysisPeriods").value),swashAnimationPeriods=Number($("swashAnimationPeriods").value),xbeachPeriods=Number($("xbeachAnalysisPeriods").value),engine=selectedModelEngine();
+  const indices=[...activeWaveRows].sort((a,b)=>a-b),toeChainage=Number($("seawallToeChainage").value),gridSpacing=Number($("swanGridSpacing").value),swanBreakingCoefficient=Number($("swanBreakingCoefficient").value),swashPeriods=Number($("swashAnalysisPeriods").value),swashAnimationPeriods=Number($("swashAnimationPeriods").value),xbeachPeriods=Number($("xbeachAnalysisPeriods").value),engine=selectedModelEngine();
   if(!indices.length){setStatus("Select at least one row under Wave conditions.","error");return;}
   if(!Number.isFinite(toeChainage)){setStatus("Seawall toe chainage must be a valid number.","error");return;}
   if(!Number.isFinite(gridSpacing)||gridSpacing<0.05||gridSpacing>20){setStatus("Model grid spacing must be between 0.05 m and 20 m.","error");return;}
+  if(engine==="swan"&&(!Number.isFinite(swanBreakingCoefficient)||swanBreakingCoefficient<0.1||swanBreakingCoefficient>1.5)){setStatus("SWAN breaking coefficient γ must be between 0.10 and 1.50.","error");return;}
   if(engine==="swash"&&(!Number.isFinite(swashPeriods)||swashPeriods<20||swashPeriods>1000)){setStatus("SWASH analysis duration must be between 20 and 1000 peak periods.","error");return;}
   if(engine==="swash"&&(!Number.isFinite(swashAnimationPeriods)||swashAnimationPeriods<1||swashAnimationPeriods>50)){setStatus("SWASH surface animation must retain between 1 and 50 peak periods.","error");return;}
   if(engine==="xbeach"&&(!Number.isFinite(xbeachPeriods)||xbeachPeriods<20||xbeachPeriods>5000)){setStatus("XBeach analysis duration must be between 20 and 5000 peak periods.","error");return;}
   modelJobRunning=true;modelJobId=null;clearSwashAnimation();updateLocalModelControls();renderModelResults([]);$("modelJobStatus").textContent="Submitting selected conditions to the local helper…";$("modelJobProgress").hidden=false;$("modelJobProgress").value=0;
-  const payload={engine,bathymetry:bathy.map(({chainage,elevation})=>({chainage,elevation})),conditions:indices.map(index=>({...waveConditions[index]})),structure:{toeChainage},options:{gridSpacing,swashPeriods,swashAnimationPeriods,xbeachPeriods}};
+  const payload={engine,bathymetry:bathy.map(({chainage,elevation})=>({chainage,elevation})),conditions:indices.map(index=>({...waveConditions[index]})),structure:{toeChainage},options:{gridSpacing,swanBreakingCoefficient,swashPeriods,swashAnimationPeriods,xbeachPeriods}};
   try{
     const response=await fetch(modelServiceUrl("/api/jobs"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     const job=await response.json();if(!response.ok)throw new Error(job.error||`HTTP ${response.status}`);
@@ -1431,6 +1452,7 @@ function createProjectState() {
       engine:$("modelEngine").value,
       toeChainage:Number($("seawallToeChainage").value),
       gridSpacing:Number($("swanGridSpacing").value),
+      swanBreakingCoefficient:Number($("swanBreakingCoefficient").value),
       swashAnalysisPeriods:Number($("swashAnalysisPeriods").value),
       swashAnimationPeriods:Number($("swashAnimationPeriods").value),
       swashAnimationTimeBasis:$("swashAnimationTimeBasis").value,
@@ -1489,7 +1511,7 @@ function parseProjectState(text) {
 
   const rawModel=data.localModel&&typeof data.localModel==="object"&&!Array.isArray(data.localModel)?data.localModel:{};
   const engine=["swan","swash","xbeach"].includes(rawModel.engine)?rawModel.engine:"swan";
-  const localModel={engine,toeChainage:projectNumber(rawModel.toeChainage??0,"Seawall toe chainage"),gridSpacing:projectNumber(rawModel.gridSpacing??1,"Model grid spacing",value=>value>=0.05&&value<=20),swashAnalysisPeriods:projectNumber(rawModel.swashAnalysisPeriods??100,"SWASH analysis duration",value=>value>=20&&value<=1000),swashAnimationPeriods:projectNumber(rawModel.swashAnimationPeriods??20,"SWASH surface animation length",value=>value>=1&&value<=50),swashAnimationTimeBasis:rawModel.swashAnimationTimeBasis==="model"?"model":"prototype",xBeachAnalysisPeriods:projectNumber(rawModel.xBeachAnalysisPeriods??1000,"XBeach analysis duration",value=>value>=20&&value<=5000)};
+  const localModel={engine,toeChainage:projectNumber(rawModel.toeChainage??0,"Seawall toe chainage"),gridSpacing:projectNumber(rawModel.gridSpacing??1,"Model grid spacing",value=>value>=0.05&&value<=20),swanBreakingCoefficient:projectNumber(rawModel.swanBreakingCoefficient??0.73,"SWAN breaking coefficient",value=>value>=0.1&&value<=1.5),swashAnalysisPeriods:projectNumber(rawModel.swashAnalysisPeriods??100,"SWASH analysis duration",value=>value>=20&&value<=1000),swashAnimationPeriods:projectNumber(rawModel.swashAnimationPeriods??20,"SWASH surface animation length",value=>value>=1&&value<=50),swashAnimationTimeBasis:rawModel.swashAnimationTimeBasis==="model"?"model":"prototype",xBeachAnalysisPeriods:projectNumber(rawModel.xBeachAnalysisPeriods??1000,"XBeach analysis duration",value=>value>=20&&value<=5000)};
 
   const cadLayers=Array.isArray(data.cadLayers)?data.cadLayers.filter(item=>item&&typeof item.name==="string"&&typeof item.visible==="boolean").map(item=>({name:item.name,visible:item.visible})):[];
   let importedView=null;
@@ -1515,7 +1537,7 @@ function applyProjectState(project,fileName) {
   $("lineColour").value=project.display.bathymetryColour;$("lineWidth").value=String(project.display.bathymetryLineWidth);$("cadLineWidth").value=String(project.display.cadLineWidth);
   $("rightExtensionDistance").value=rightExtensionDistance>0?String(rightExtensionDistance):"";$("rightExtensionDistance").classList.remove("invalid");
   document.documentElement.style.setProperty("--cad-stroke-width",`${project.display.cadLineWidth}px`);
-  $("modelEngine").value=project.localModel.engine;$("seawallToeChainage").value=String(project.localModel.toeChainage);$("swanGridSpacing").value=String(project.localModel.gridSpacing);$("swashAnalysisPeriods").value=String(project.localModel.swashAnalysisPeriods);$("swashAnimationPeriods").value=String(project.localModel.swashAnimationPeriods);$("swashAnimationTimeBasis").value=project.localModel.swashAnimationTimeBasis;$("xbeachAnalysisPeriods").value=String(project.localModel.xBeachAnalysisPeriods);
+  $("modelEngine").value=project.localModel.engine;$("seawallToeChainage").value=String(project.localModel.toeChainage);$("swanGridSpacing").value=String(project.localModel.gridSpacing);$("swanBreakingCoefficient").value=String(project.localModel.swanBreakingCoefficient);$("swashAnalysisPeriods").value=String(project.localModel.swashAnalysisPeriods);$("swashAnimationPeriods").value=String(project.localModel.swashAnimationPeriods);$("swashAnimationTimeBasis").value=project.localModel.swashAnimationTimeBasis;$("xbeachAnalysisPeriods").value=String(project.localModel.xBeachAnalysisPeriods);
   const layersByName=new Map(project.cadLayers.map(item=>[item.name,item.visible]));
   document.querySelectorAll(".layer-item input[data-layer-id]").forEach(check=>{const layer=CAD_LAYERS.find(item=>item.id===check.dataset.layerId);if(layer&&layersByName.has(layer.name)){check.checked=layersByName.get(layer.name);$(layer.id).style.display=check.checked?"":"none";}});
   modelJobId=null;renderModelResults([]);$("modelJobStatus").textContent="";
@@ -1692,6 +1714,7 @@ function useSharedWaveConditions(project,rawConditions,filename){
 }
 window.addEventListener("message",event=>{
   if(event.source!==window.parent||!event.data||typeof event.data.type!=="string")return;
+  if(event.data.type==="flumeworks:set-workspace-mode"){applyWorkspaceMode(event.data.mode);return;}
   if(event.data.type==="flumeworks:capture-model-design"){
     window.parent.postMessage({type:"flumeworks:model-design-state",requestId:event.data.requestId,state:createProjectState()},"*");
     return;
@@ -1747,6 +1770,7 @@ $("toggleSidebar").addEventListener("click",()=>$("app").classList.toggle("sideb
 new ResizeObserver(refreshScreenSizedSymbols).observe(viewer);
 
 $("canvasBackground").setAttribute("x",metaView.x); $("canvasBackground").setAttribute("y",metaView.y); $("canvasBackground").setAttribute("width",metaView.width); $("canvasBackground").setAttribute("height",metaView.height);
+applyWorkspaceMode(new URLSearchParams(location.search).get("workspace"));
 initialiseLayers(); renderTable(); renderFixedWaterLevelList(); redrawFixedWaterLevels(); renderWaveConditionList(); resetView(); updatePlacementUI(); updateBatterUI(); updateRightExtensionUI(); updateMeasureUI(); renderMeasurement(); redrawBathymetry();
 flumeworksDefaultModelDesignState=createProjectState();
 if(window.parent!==window)window.parent.postMessage({type:"flumeworks:model-design-ready"},"*");
