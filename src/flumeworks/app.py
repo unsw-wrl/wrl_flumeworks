@@ -56,7 +56,7 @@ def run(argv: list[str] | None = None) -> int:
                 min_size=(1050, 700),
                 confirm_close=True,
             )
-            desktop_api.bind_window(window)
+            desktop_api._bind_window(window)
             webview.start()
         return 0
     finally:
