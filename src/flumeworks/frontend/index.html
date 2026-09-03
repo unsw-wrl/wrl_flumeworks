@@ -30,6 +30,12 @@
         <span>DAQ Import</span><span>Pre-processing &amp; QC</span><span>Wave Processing</span>
         <span>Wave Loads</span><span>Stability</span>
       </div>
+      <div class="sidebar-project-bar">
+        <button id="projectMenuToggle" class="sidebar-icon-button" type="button" aria-controls="projectMenu" aria-expanded="false" aria-label="Project options" title="Project options">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm8 3.5-.1-1.2 2-1.6-2-3.4-2.4 1a8.7 8.7 0 0 0-2.1-1.2L15 3h-4l-.4 2.6c-.8.3-1.5.7-2.1 1.2l-2.4-1-2 3.4 2 1.6L6 12l.1 1.2-2 1.6 2 3.4 2.4-1c.6.5 1.3.9 2.1 1.2L11 21h4l.4-2.6c.8-.3 1.5-.7 2.1-1.2l2.4 1 2-3.4-2-1.6.1-1.2Z"/></svg>
+        </button>
+        <button id="saveProject" class="sidebar-save-button" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l3 3v15H4V3h1Zm2 0v6h9V3M7 21v-8h10v8"/></svg><span>Save project</span></button>
+      </div>
       <footer><span id="appVersion">Version —</span><span id="gitCommit">Commit —</span></footer>
     </aside>
 
@@ -41,50 +47,36 @@
         </div>
         <div id="status" class="status" role="status" aria-live="polite">Loading FlumeWorks…</div>
 
-        <div class="project-grid">
-          <details id="createProjectPanel" class="card setup-panel" open>
-            <summary><span><small>New project</small><strong>Create a project database</strong></span></summary>
-            <div class="setup-panel-body">
-              <form id="createProjectForm">
-                <div class="field-row">
-                  <label>Project number<input name="project_number" maxlength="100" placeholder="e.g. WRL2023067"></label>
-                  <label>Facility<select name="facility" id="facilitySelect" required></select></label>
-                </div>
-                <label>Project name<input name="name" maxlength="200" required placeholder="e.g. Bronte seawall physical model"></label>
-                <label>Description<textarea name="description" rows="3" maxlength="4000" placeholder="Optional short project description"></textarea></label>
-                <label>Project file<div class="file-picker"><input id="newProjectPath" name="destination_path" readonly required placeholder="Choose a .flumeworks file location"><button id="chooseNewProjectPath" class="secondary" type="button">Browse…</button></div></label>
-                <p class="hint">The <code>.flumeworks</code> file can be stored in any local or network folder. FlumeWorks will not overwrite an existing file.</p>
-                <button class="primary" type="submit">Create and open project</button>
-              </form>
-            </div>
-          </details>
-
-          <details id="openProjectPanel" class="card setup-panel" open>
-            <summary><span><small>Recent projects</small><strong>Open an existing project</strong></span></summary>
-            <div class="setup-panel-body">
-              <div class="card-actions panel-actions"><button id="openProjectFile" class="primary" type="button">Open file…</button><button id="refreshProjects" class="secondary" type="button">Refresh</button></div>
-              <div id="projectList" class="project-list"><p class="empty">No FlumeWorks projects found yet.</p></div>
-            </div>
-          </details>
-        </div>
+        <section id="noProjectCard" class="card empty-project-card">
+          <div class="empty-project-icon" aria-hidden="true">+</div>
+          <div><h2>Open or create a project</h2><p>Your recent projects and management options are always available from the gear button at the bottom left.</p></div>
+          <div class="card-actions"><button id="emptyOpenProject" class="primary" type="button">Open project</button><button id="emptyNewProject" class="secondary" type="button">New project</button></div>
+        </section>
 
         <section id="currentProjectCard" class="card wide" hidden>
-          <div class="card-heading"><div><p class="eyebrow">Current project</p><h2 id="currentProjectName">—</h2></div><div class="card-actions"><span id="saveState" class="pill">Saved</span><span id="currentFacility" class="pill">—</span></div></div>
-          <dl class="project-details">
+          <div class="card-heading"><div><p class="eyebrow">Current project</p><h2 id="currentProjectName">—</h2></div><div class="card-actions"><span id="saveState" class="pill">Saved</span><button id="editProject" class="primary" type="button">Edit</button></div></div>
+          <div id="projectSummary">
+          <dl class="project-details project-summary-grid">
             <div><dt>Project number</dt><dd id="currentProjectNumber">—</dd></div>
+            <div><dt>Wave flume</dt><dd id="currentFacility">—</dd></div>
+            <div><dt>Project scale</dt><dd id="currentProjectScale">—</dd></div>
             <div><dt>Project file</dt><dd id="currentDatabase">—</dd></div>
             <div><dt>Last updated</dt><dd id="currentUpdated">—</dd></div>
           </dl>
           <p id="currentDescription" class="description"></p>
-          <form id="projectScaleForm" class="scale-form">
-            <label><span>Project scale</span><span class="scale-entry">1 : <input id="projectScaleInput" name="denominator" type="number" min="0.000001" max="10000" step="any" placeholder="e.g. 50"></span></label>
-            <button class="secondary" type="submit">Set scale</button>
-            <button id="clearProjectScale" class="secondary" type="button">Clear</button>
-            <span id="projectScaleSummary" class="hint">No project scale set.</span>
+          </div>
+          <form id="editProjectForm" class="project-edit-form" hidden>
+            <div class="field-row">
+              <label>Project number<input id="editProjectNumber" name="project_number" maxlength="100"></label>
+              <label>Wave flume<select id="editFacilitySelect" name="facility" required></select></label>
+            </div>
+            <label>Project title<input id="editProjectName" name="name" maxlength="200" required></label>
+            <label>Project file<div class="file-picker"><input id="editProjectPath" name="destination_path" readonly required><button id="chooseEditProjectPath" class="secondary" type="button">Browse…</button></div></label>
+            <p class="hint">Selecting a new location saves and switches to a verified copy. The original project file is left unchanged.</p>
+            <label>Project scale<span class="scale-entry">1 : <input id="editProjectScale" name="model_scale_denominator" type="number" min="0.000001" max="10000" step="any" placeholder="Optional"></span></label>
+            <p class="hint">This scale controls prototype/model conversion on Project Setup only. Model Design keeps its own drawing scale.</p>
+            <div class="condition-edit-actions"><button class="primary" type="submit">Save changes</button><button id="cancelProjectEdit" class="secondary" type="button">Cancel</button></div>
           </form>
-          <p class="hint">This scale controls prototype/model conversion on Project Setup only. Model Design keeps its own drawing scale.</p>
-          <div class="project-actions"><button id="saveProject" class="primary" type="button">Save project</button><button id="backupProject" class="secondary" type="button">Generate backup</button><button id="closeProject" class="secondary" type="button">Close project</button></div>
-          <p class="hint">Edits use a fast local working copy. Saving updates the selected project file while its FlumeWorks lock is held.</p>
         </section>
 
         <section id="conditionCard" class="card wide" hidden>
@@ -137,6 +129,35 @@
         </section>
       </section>
     </main>
+  </div>
+
+  <section id="projectMenu" class="project-menu" role="dialog" aria-label="Project options" hidden>
+    <div class="project-menu-heading"><div><p class="eyebrow">Project options</p><strong>Manage projects</strong></div><button id="closeProjectMenu" class="plain-icon-button" type="button" aria-label="Close project options">×</button></div>
+    <div class="project-menu-actions">
+      <button id="newProjectAction" type="button"><span aria-hidden="true">＋</span><div><strong>New project</strong><small>Create a .flumeworks project</small></div></button>
+      <button id="openProjectFile" type="button"><span aria-hidden="true">⌕</span><div><strong>Open project</strong><small>Choose a project file</small></div></button>
+      <button id="backupProject" type="button" disabled><span aria-hidden="true">⇩</span><div><strong>Generate backup</strong><small>Save a timestamped snapshot</small></div></button>
+      <button id="closeProject" type="button" disabled><span aria-hidden="true">×</span><div><strong>Close project</strong><small>Save and release its edit lock</small></div></button>
+    </div>
+    <div class="project-menu-recent-heading"><strong>Recent projects</strong><button id="refreshProjects" type="button">Refresh</button></div>
+    <div id="projectList" class="project-list compact"><p class="empty">No recent projects on this computer.</p></div>
+  </section>
+
+  <div id="newProjectModal" class="modal-backdrop" hidden>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="newProjectTitle">
+      <div class="modal-heading"><div><p class="eyebrow">New project</p><h2 id="newProjectTitle">Create a project database</h2></div><button id="cancelNewProject" class="plain-icon-button" type="button" aria-label="Close new project form">×</button></div>
+      <form id="createProjectForm">
+        <div class="field-row">
+          <label>Project number<input name="project_number" maxlength="100" placeholder="e.g. WRL2023067"></label>
+          <label>Wave flume<select name="facility" id="facilitySelect" required></select></label>
+        </div>
+        <label>Project title<input name="name" maxlength="200" required placeholder="e.g. Bronte seawall physical model"></label>
+        <label>Description<textarea name="description" rows="3" maxlength="4000" placeholder="Optional short project description"></textarea></label>
+        <label>Project file<div class="file-picker"><input id="newProjectPath" name="destination_path" readonly required placeholder="Choose a .flumeworks file location"><button id="chooseNewProjectPath" class="secondary" type="button">Browse…</button></div></label>
+        <p class="hint">The project can be stored in any local or network folder. An existing file will never be overwritten.</p>
+        <div class="modal-actions"><button id="cancelNewProjectBottom" class="secondary" type="button">Cancel</button><button class="primary" type="submit">Create and open project</button></div>
+      </form>
+    </section>
   </div>
   <script src="/assets/app.js"></script>
 </body>

@@ -62,6 +62,24 @@ def test_project_and_model_design_state_round_trip(tmp_path: Path) -> None:
     assert database.design_conditions()[0]["ari_years"] == pytest.approx(100.0)
 
 
+def test_project_details_can_be_updated_together(tmp_path: Path) -> None:
+    database = create_database(tmp_path / "details.flumeworks")
+
+    database.update_project(
+        name="Updated project title",
+        project_number="WRL2042",
+        facility="flume_0_9m",
+        model_scale_denominator=35,
+    )
+
+    project = database.project()
+    assert project.name == "Updated project title"
+    assert project.project_number == "WRL2042"
+    assert project.facility == "flume_0_9m"
+    assert project.facility_name == "0.9 m wave flume"
+    assert project.model_scale_denominator == pytest.approx(35)
+
+
 def test_import_replaces_conditions_and_records_csv_name(tmp_path: Path) -> None:
     database = create_database(tmp_path / "import.flumeworks")
     database.add_design_condition(condition_number="old")
@@ -173,3 +191,6 @@ def test_recent_projects_remember_arbitrary_paths(tmp_path: Path) -> None:
 
     assert recents.list()[0]["path"] == str(project.resolve())
     assert recents.list()[0]["available"] is True
+
+    recents.remove(project)
+    assert recents.list() == []

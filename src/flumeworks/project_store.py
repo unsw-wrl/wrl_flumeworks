@@ -296,6 +296,38 @@ class ProjectDatabase:
     def project_dict(self) -> dict[str, Any]:
         return asdict(self.project())
 
+    def update_project(
+        self,
+        *,
+        name: str,
+        project_number: str,
+        facility: str,
+        model_scale_denominator: float | None,
+    ) -> None:
+        clean_name = name.strip()
+        if not clean_name:
+            raise ProjectError("Project title is required.")
+        if facility not in FACILITIES:
+            raise ProjectError("Select a recognised WRL facility.")
+        if model_scale_denominator is not None and model_scale_denominator <= 0:
+            raise ProjectError("Project scale must be greater than zero.")
+        now = utc_now()
+        with closing(self._connect()) as connection:
+            connection.execute(
+                """UPDATE project
+                   SET name = ?, project_number = ?, facility = ?,
+                       model_scale_denominator = ?, updated_at = ?
+                   WHERE id = 1""",
+                (
+                    clean_name,
+                    project_number.strip(),
+                    facility,
+                    model_scale_denominator,
+                    now,
+                ),
+            )
+            connection.commit()
+
     def design_conditions(self) -> list[dict[str, Any]]:
         with closing(self._connect()) as connection:
             rows = connection.execute(
@@ -668,6 +700,18 @@ class RecentProjects:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_suffix(".tmp")
         temporary.write_text(json.dumps([item, *existing][:20], indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, self.path)
+
+    def remove(self, source_path: str | Path) -> None:
+        source = str(Path(source_path).resolve()).lower()
+        remaining = [
+            entry
+            for entry in self._read()
+            if str(entry.get("path", "")).lower() != source
+        ]
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(remaining, indent=2) + "\n", encoding="utf-8")
         os.replace(temporary, self.path)
 
 

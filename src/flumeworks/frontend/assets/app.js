@@ -5,6 +5,7 @@ const SIDEBAR_STORAGE_KEY = "flumeworks.sidebarCollapsed";
 let bootstrap = null, modelDesignReady = false, loadedModelProject = "", lastModelDesignSignature = "", modelSyncBusy = false, captureSequence = 0;
 let conditionDisplayMode = "prototype", panelProjectIdentity = null;
 let conditionEditMode = false, conditionDraft = [], conditionDraftInitial = "", conditionDraftSequence = 0;
+let projectEditMode = false, projectEditInitial = "";
 let currentView = "project", activeToolTab = "wave-transformation";
 const captureRequests = new Map();
 
@@ -73,6 +74,52 @@ function renderProjects() {
     button.type = "button"; button.className = "secondary"; button.textContent = "Open"; button.disabled = !project.available; button.addEventListener("click", () => openProject(project.path));
     info.append(name, meta, path); row.append(info, button); root.appendChild(row);
   }
+}
+
+function setProjectMenu(open) {
+  const menu = $("projectMenu"), toggle = $("projectMenuToggle");
+  menu.hidden = !open; toggle.setAttribute("aria-expanded", String(open));
+}
+
+function setNewProjectModal(open) {
+  $("newProjectModal").hidden = !open;
+  if (open) {
+    setProjectMenu(false);
+    window.setTimeout(() => document.querySelector("#createProjectForm input[name='project_number']")?.focus(), 0);
+  }
+}
+
+function projectEditSignature() {
+  return JSON.stringify({
+    project_number: $("editProjectNumber").value.trim(),
+    facility: $("editFacilitySelect").value,
+    name: $("editProjectName").value.trim(),
+    destination_path: $("editProjectPath").value.trim(),
+    model_scale_denominator: $("editProjectScale").value.trim(),
+  });
+}
+
+function projectEditDirty() { return projectEditMode && projectEditSignature() !== projectEditInitial; }
+
+function resetProjectEditing() { projectEditMode = false; projectEditInitial = ""; }
+
+function beginProjectEditing() {
+  const project = bootstrap?.currentProject?.project;
+  if (!project || conditionEditMode) return;
+  projectEditMode = true;
+  renderCurrentProject();
+  $("editProjectNumber").value = project.project_number || "";
+  $("editFacilitySelect").value = project.facility;
+  $("editProjectName").value = project.name || "";
+  $("editProjectPath").value = project.database_path || "";
+  $("editProjectScale").value = project.model_scale_denominator ?? "";
+  projectEditInitial = projectEditSignature();
+  $("editProjectNumber").focus();
+}
+
+function cancelProjectEditing() {
+  if (projectEditDirty() && !window.confirm("Cancel editing? Any unsaved project-detail changes will be lost.")) return;
+  resetProjectEditing(); renderCurrentProject(); setStatus("Project-detail changes were not saved.");
 }
 
 function projectScale() {
@@ -274,25 +321,30 @@ function renderConditionRows(conditions, scale) {
   });
   $("conditionActionsHeading").hidden = !conditionEditMode;
   $("conditionEditActions").hidden = !conditionEditMode; $("addConditionRow").hidden = !conditionEditMode;
-  $("editConditions").hidden = conditionEditMode; $("loadWaveConditionsCsv").disabled = conditionEditMode;
+  $("editConditions").hidden = conditionEditMode; $("loadWaveConditionsCsv").disabled = projectEditMode || conditionEditMode;
   $("conditionCard").classList.toggle("editing-conditions", conditionEditMode);
 }
 
 function renderCurrentProject() {
   const current = bootstrap.currentProject, visible = Boolean(current && current.project);
-  $("currentProjectCard").hidden = !visible; $("conditionCard").hidden = !visible;
+  $("currentProjectCard").hidden = !visible; $("conditionCard").hidden = !visible; $("noProjectCard").hidden = visible;
+  $("saveProject").disabled = !visible; $("backupProject").disabled = !visible; $("closeProject").disabled = !visible;
   const identity = visible ? current.project.uuid : "__none__";
-  if (identity !== panelProjectIdentity) { $("createProjectPanel").open = !visible; $("openProjectPanel").open = !visible; panelProjectIdentity = identity; }
-  if (!visible) { $("activeProjectBadge").textContent = "No project open"; resetConditionEditing(); return; }
+  if (identity !== panelProjectIdentity) { resetProjectEditing(); panelProjectIdentity = identity; }
+  if (!visible) { $("activeProjectBadge").textContent = "No project open"; resetConditionEditing(); resetProjectEditing(); return; }
   const project = current.project, conditions = current.designConditions || [], scale = projectScale();
   $("activeProjectBadge").textContent = project.project_number || project.name; $("currentProjectName").textContent = project.name; $("currentFacility").textContent = project.facility_name;
   $("currentProjectNumber").textContent = textOrDash(project.project_number); $("currentDatabase").textContent = project.database_path; $("currentDatabase").title = project.database_path;
   $("currentUpdated").textContent = new Date(project.updated_at).toLocaleString(); $("currentDescription").textContent = project.description || "No project description.";
+  $("currentProjectScale").textContent = scale ? `1:${scale} · time scale 1:${Math.sqrt(scale).toFixed(2)}` : "Not set";
   $("saveState").textContent = current.dirty ? "Unsaved changes" : "Saved"; $("saveState").classList.toggle("unsaved", Boolean(current.dirty));
+  $("saveProject").classList.toggle("dirty", Boolean(current.dirty));
+  $("saveProject").title = current.dirty ? "Save unsaved project changes" : "Save project";
+  $("projectSummary").hidden = projectEditMode; $("editProjectForm").hidden = !projectEditMode; $("editProject").hidden = projectEditMode;
+  $("editProject").disabled = conditionEditMode; $("editConditions").disabled = projectEditMode; $("loadWaveConditionsCsv").disabled = projectEditMode || conditionEditMode;
   const displayedConditions = conditionEditMode ? conditionDraft : conditions;
   $("conditionCount").textContent = `${displayedConditions.length} condition${displayedConditions.length === 1 ? "" : "s"}`;
   $("conditionSource").textContent = project.wave_conditions_filename ? `Source: ${project.wave_conditions_filename}` : "Entered directly in FlumeWorks";
-  $("projectScaleInput").value = scale ?? ""; $("projectScaleSummary").textContent = scale ? `1:${scale} · time scale 1:${Math.sqrt(scale).toFixed(2)}` : "No project scale set.";
   $("showPrototypeConditions").disabled = conditionEditMode; $("showModelConditions").disabled = conditionEditMode || !scale; if (!scale && conditionDisplayMode === "model") conditionDisplayMode = "prototype";
   $("showPrototypeConditions").classList.toggle("active", conditionDisplayMode === "prototype"); $("showModelConditions").classList.toggle("active", conditionDisplayMode === "model");
   renderConditionRows(displayedConditions, scale || 1);
@@ -348,8 +400,11 @@ async function persistModelDesign() {
 
 function renderBootstrap() {
   $("appVersion").textContent = `Version ${bootstrap.application.version}`; $("gitCommit").textContent = `Commit ${bootstrap.application.gitCommit}`;
-  const facilities = $("facilitySelect"); facilities.replaceChildren();
-  for (const facility of bootstrap.facilities) { const option = document.createElement("option"); option.value = facility.id; option.textContent = facility.name; facilities.appendChild(option); }
+  for (const select of [$("facilitySelect"), $("editFacilitySelect")]) {
+    const selected = select.value; select.replaceChildren();
+    for (const facility of bootstrap.facilities) { const option = document.createElement("option"); option.value = facility.id; option.textContent = facility.name; select.appendChild(option); }
+    if (selected) select.value = selected;
+  }
   if (bootstrap.modelDesignUrl && $("modelDesignFrame").dataset.baseUrl !== bootstrap.modelDesignUrl) {
     const source = new URL(bootstrap.modelDesignUrl); source.searchParams.set("workspace", "model-design");
     $("modelDesignFrame").src = source.href; $("modelDesignFrame").dataset.baseUrl = bootstrap.modelDesignUrl;
@@ -362,15 +417,17 @@ async function refresh(message = "") { bootstrap = await api("/api/bootstrap"); 
 async function openProject(sourcePath) {
   if (!sourcePath) return;
   if (conditionEditMode && conditionDraftDirty() && !window.confirm("Open another project? Any unsaved condition changes will be lost.")) return;
+  if (projectEditDirty() && !window.confirm("Open another project? Any unsaved project-detail changes will be lost.")) return;
   try {
     const payload = await api("/api/projects/open", {method: "POST", body: JSON.stringify({source_path: sourcePath})});
-    bootstrap.currentProject = payload.currentProject; bootstrap.recentProjects = payload.recentProjects; loadedModelProject = ""; resetConditionEditing(); renderProjects(); renderCurrentProject(); loadModelDesignForCurrentProject(true);
+    bootstrap.currentProject = payload.currentProject; bootstrap.recentProjects = payload.recentProjects; loadedModelProject = ""; resetConditionEditing(); resetProjectEditing(); setProjectMenu(false); renderProjects(); renderCurrentProject(); loadModelDesignForCurrentProject(true);
     setStatus(`Opened ${payload.currentProject.project.name} with an exclusive edit lock.`, "success");
   } catch (error) { setStatus(error.message, "error"); }
 }
 
 async function saveProject() {
   if (conditionEditMode) { setStatus("Save or cancel the condition-table changes first.", "error"); return; }
+  if (projectEditMode) { setStatus("Save or cancel the project-detail changes first.", "error"); return; }
   try {
     await persistModelDesign(); const payload = await api("/api/projects/save", {method: "POST"}); bootstrap.currentProject = payload.currentProject; bootstrap.recentProjects = payload.recentProjects; renderProjects(); renderCurrentProject(); setStatus("Project saved to its .flumeworks file.", "success");
   } catch (error) { setStatus(error.message, "error"); }
@@ -424,19 +481,28 @@ $("createProjectForm").addEventListener("submit", async event => {
   event.preventDefault(); const form = event.currentTarget, data = new FormData(form);
   const request = {destination_path: String(data.get("destination_path") || ""), name: String(data.get("name") || ""), project_number: String(data.get("project_number") || ""), facility: String(data.get("facility") || ""), description: String(data.get("description") || "")};
   try {
-    const payload = await api("/api/projects", {method: "POST", body: JSON.stringify(request)}); bootstrap.recentProjects = payload.recentProjects; bootstrap.currentProject = payload.currentProject; loadedModelProject = ""; resetConditionEditing(); renderProjects(); renderCurrentProject(); loadModelDesignForCurrentProject(true); form.reset();
+    const payload = await api("/api/projects", {method: "POST", body: JSON.stringify(request)}); bootstrap.recentProjects = payload.recentProjects; bootstrap.currentProject = payload.currentProject; loadedModelProject = ""; resetConditionEditing(); resetProjectEditing(); setNewProjectModal(false); renderProjects(); renderCurrentProject(); loadModelDesignForCurrentProject(true); form.reset();
     setStatus(`Created ${payload.currentProject.project.name}. The project is locked for this FlumeWorks session.`, "success");
   } catch (error) { setStatus(error.message, "error"); }
 });
 
-$("projectScaleForm").addEventListener("submit", async event => {
-  event.preventDefault(); const denominator = numberOrNull(event.currentTarget, "denominator");
-  try { const payload = await api("/api/project-scale", {method: "PUT", body: JSON.stringify({denominator})}); bootstrap.currentProject = payload.currentProject; renderCurrentProject(); setStatus(denominator ? `Project scale set to 1:${denominator}.` : "Project scale cleared.", "success"); }
-  catch (error) { setStatus(error.message, "error"); }
+$("editProject").addEventListener("click", beginProjectEditing);
+$("cancelProjectEdit").addEventListener("click", cancelProjectEditing);
+$("chooseEditProjectPath").addEventListener("click", async () => {
+  const path = await nativePath("choose_new_project", $("editProjectNumber").value, $("editProjectName").value);
+  if (path) $("editProjectPath").value = path;
 });
-$("clearProjectScale").addEventListener("click", async () => {
-  try { const payload = await api("/api/project-scale", {method: "PUT", body: JSON.stringify({denominator: null})}); bootstrap.currentProject = payload.currentProject; renderCurrentProject(); setStatus("Project scale cleared. Prototype values remain available.", "success"); }
-  catch (error) { setStatus(error.message, "error"); }
+$("editProjectForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  const destination = $("editProjectPath").value.trim(), originalPath = bootstrap.currentProject.project.database_path;
+  const scaleText = $("editProjectScale").value.trim();
+  const request = {destination_path: destination, name: $("editProjectName").value.trim(), project_number: $("editProjectNumber").value.trim(), facility: $("editFacilitySelect").value, model_scale_denominator: scaleText === "" ? null : Number(scaleText)};
+  try {
+    await persistModelDesign();
+    const payload = await api("/api/projects/current", {method: "PUT", body: JSON.stringify(request)});
+    bootstrap.currentProject = payload.currentProject; bootstrap.recentProjects = payload.recentProjects; resetProjectEditing(); renderProjects(); renderCurrentProject();
+    setStatus(destination === originalPath ? "Project details updated. Save the project when ready." : `Project saved and switched to ${destination}. The original file remains unchanged.`, "success");
+  } catch (error) { setStatus(error.message, "error"); }
 });
 
 $("editConditions").addEventListener("click", beginConditionEditing); $("addConditionRow").addEventListener("click", addConditionDraftRow);
@@ -476,16 +542,35 @@ document.querySelector(".conditions-table").addEventListener("scroll", closeInfo
 window.addEventListener("resize", closeInfoPopovers);
 document.querySelectorAll(".info-popover").forEach(popover => popover.addEventListener("click", event => event.stopPropagation()));
 
+$("projectMenuToggle").addEventListener("click", event => { event.stopPropagation(); setProjectMenu($("projectMenu").hidden); });
+$("closeProjectMenu").addEventListener("click", () => setProjectMenu(false));
+$("projectMenu").addEventListener("click", event => event.stopPropagation());
+document.addEventListener("click", () => setProjectMenu(false));
+$("newProjectAction").addEventListener("click", () => setNewProjectModal(true));
+$("emptyNewProject").addEventListener("click", () => setNewProjectModal(true));
+$("emptyOpenProject").addEventListener("click", async () => openProject(await nativePath("choose_open_project")));
+$("cancelNewProject").addEventListener("click", () => setNewProjectModal(false));
+$("cancelNewProjectBottom").addEventListener("click", () => setNewProjectModal(false));
+$("newProjectModal").addEventListener("click", event => { if (event.target === $("newProjectModal")) setNewProjectModal(false); });
+document.addEventListener("keydown", event => {
+  if (event.key !== "Escape") return;
+  if (!$("newProjectModal").hidden) setNewProjectModal(false);
+  else if (!$("projectMenu").hidden) setProjectMenu(false);
+});
+
 $("saveProject").addEventListener("click", saveProject);
 $("backupProject").addEventListener("click", async () => {
   if (conditionEditMode) { setStatus("Save or cancel the condition-table changes first.", "error"); return; }
-  try { await persistModelDesign(); const payload = await api("/api/projects/backup", {method: "POST"}); bootstrap.currentProject = payload.currentProject; renderCurrentProject(); setStatus(`Backup created: ${payload.backupPath}`, "success"); }
+  if (projectEditMode) { setStatus("Save or cancel the project-detail changes first.", "error"); return; }
+  try { await persistModelDesign(); const payload = await api("/api/projects/backup", {method: "POST"}); bootstrap.currentProject = payload.currentProject; setProjectMenu(false); renderCurrentProject(); setStatus(`Backup created: ${payload.backupPath}`, "success"); }
   catch (error) { setStatus(error.message, "error"); }
 });
 $("closeProject").addEventListener("click", async () => {
   if (conditionEditMode) { setStatus("Save or cancel the condition-table changes first.", "error"); return; }
+  if (projectEditMode) { setStatus("Save or cancel the project-detail changes first.", "error"); return; }
+  if (!window.confirm("Close this project? It will be saved and its edit lock will be released.")) return;
   try {
-    await persistModelDesign(); const payload = await api("/api/projects/close", {method: "POST"}); bootstrap.currentProject = null; bootstrap.recentProjects = payload.recentProjects; loadedModelProject = ""; renderProjects(); renderCurrentProject(); loadModelDesignForCurrentProject(true); setStatus("Project saved and closed. Its edit lock was released.", "success");
+    await persistModelDesign(); const payload = await api("/api/projects/close", {method: "POST"}); bootstrap.currentProject = null; bootstrap.recentProjects = payload.recentProjects; loadedModelProject = ""; resetProjectEditing(); setProjectMenu(false); renderProjects(); renderCurrentProject(); loadModelDesignForCurrentProject(true); setStatus("Project saved and closed. Its edit lock was released.", "success");
   } catch (error) { setStatus(error.message, "error"); }
 });
 

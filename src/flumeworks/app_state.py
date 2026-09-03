@@ -190,6 +190,65 @@ class ApplicationState:
             self._dirty = True
             return self.current_payload()
 
+    def update_current_project(
+        self,
+        *,
+        destination_path: str,
+        name: str,
+        project_number: str,
+        facility: str,
+        model_scale_denominator: float | None,
+    ) -> dict[str, Any]:
+        with self._lock:
+            database = self._require_editable()
+            if self._source_path is None:
+                raise ProjectError("The current project has no source file.")
+            source = self._source_path
+            destination = normalise_project_path(destination_path)
+            path_changed = destination != source
+            if path_changed and destination.exists():
+                raise ProjectExistsError(
+                    f"Project file already exists; nothing was overwritten: {destination}"
+                )
+
+            original = database.project()
+            original_dirty = self._dirty
+            new_lease: ProjectLease | None = None
+            if path_changed:
+                new_lease = ProjectLease(destination, app_version=__version__)
+                new_lease.acquire()
+            try:
+                database.update_project(
+                    name=name,
+                    project_number=project_number,
+                    facility=facility,
+                    model_scale_denominator=model_scale_denominator,
+                )
+                self._dirty = True
+                if path_changed:
+                    snapshot_database(database.path, destination, replace=False)
+            except Exception:
+                database.update_project(
+                    name=original.name,
+                    project_number=original.project_number,
+                    facility=original.facility,
+                    model_scale_denominator=original.model_scale_denominator,
+                )
+                self._dirty = original_dirty
+                if new_lease:
+                    new_lease.release()
+                raise
+
+            if path_changed:
+                if self._lease:
+                    self._lease.release()
+                self._source_path = destination
+                self._lease = new_lease
+                self._dirty = False
+                self.recents.remove(source)
+            self.recents.add(database, self._source_path)
+            return self.current_payload()
+
     def save_model_design(self, payload: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             database = self._require_editable()

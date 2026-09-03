@@ -38,6 +38,22 @@ def test_project_model_design_save_and_backup_workflow(tmp_path: Path) -> None:
         assert created.status_code == 201
         assert created.json()["currentProject"]["project"]["database_path"] == str(project_path)
 
+        project_updated = client.put(
+            "/api/projects/current",
+            json={
+                "destination_path": str(project_path),
+                "name": "Updated API project",
+                "project_number": "WRL0100",
+                "facility": "flume_3m",
+                "model_scale_denominator": 45,
+            },
+        )
+        assert project_updated.status_code == 200
+        assert project_updated.json()["currentProject"]["project"]["name"] == "Updated API project"
+        assert project_updated.json()["currentProject"]["project"]["facility_name"] == "3 m wave flume"
+        assert project_updated.json()["currentProject"]["project"]["model_scale_denominator"] == 45
+        assert project_updated.json()["currentProject"]["dirty"] is True
+
         model_design = {
             "cadDrawing": {"sourceFile": "wave_flume.dwg"},
             "bathymetry": {"points": [{"chainage": 0, "elevation": 0.4}]},
@@ -129,6 +145,9 @@ def test_frontend_shell_is_served(tmp_path: Path) -> None:
         assert response.status_code == 200
         assert "WRL FlumeWorks" in response.text
         assert "Generate backup" in response.text
+        assert "Project options" in response.text
+        assert "Save project" in response.text
+        assert "Create a project database" in response.text
         assert "Model Design" in response.text
     finally:
         state.shutdown()

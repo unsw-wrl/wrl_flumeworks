@@ -28,6 +28,14 @@ class ProjectOpenRequest(BaseModel):
     source_path: str = Field(min_length=1, max_length=2000)
 
 
+class ProjectUpdateRequest(BaseModel):
+    destination_path: str = Field(min_length=1, max_length=2000)
+    name: str = Field(min_length=1, max_length=200)
+    project_number: str = Field(default="", max_length=100)
+    facility: str
+    model_scale_denominator: float | None = Field(default=None, gt=0, le=10000)
+
+
 class DesignConditionRequest(BaseModel):
     condition_number: str = Field(min_length=1, max_length=100)
     target_hs_m: float | None = Field(default=None, ge=0)
@@ -128,6 +136,14 @@ def create_app(state: ApplicationState) -> FastAPI:
     def open_project(request: ProjectOpenRequest) -> dict[str, object]:
         try:
             current = state.open_project(request.source_path)
+        except ProjectError as exc:
+            raise project_http_error(exc) from exc
+        return {"currentProject": current, "recentProjects": state.recents.list()}
+
+    @app.put("/api/projects/current")
+    def update_project(request: ProjectUpdateRequest) -> dict[str, object]:
+        try:
+            current = state.update_current_project(**request.model_dump())
         except ProjectError as exc:
             raise project_http_error(exc) from exc
         return {"currentProject": current, "recentProjects": state.recents.list()}

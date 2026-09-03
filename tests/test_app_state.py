@@ -83,3 +83,39 @@ def test_second_application_is_blocked_by_project_lock(tmp_path: Path) -> None:
     finally:
         first.shutdown()
         second.shutdown()
+
+
+def test_project_details_and_file_location_update_safely(tmp_path: Path) -> None:
+    state = make_state(tmp_path)
+    source = tmp_path / "original" / "project.flumeworks"
+    destination = tmp_path / "relocated" / "renamed.flumeworks"
+    try:
+        create_project(state, source)
+        state.add_design_condition(condition_number="DC1", target_hs_m=3.2)
+
+        current = state.update_current_project(
+            destination_path=str(destination),
+            name="Relocated project",
+            project_number="WRL2042",
+            facility="flume_3m",
+            model_scale_denominator=40,
+        )
+
+        assert destination.is_file()
+        assert source.is_file()
+        assert not source.with_name(source.name + ".lock").exists()
+        assert destination.with_name(destination.name + ".lock").is_file()
+        assert current["dirty"] is False
+        assert current["project"]["database_path"] == str(destination.resolve())
+        assert current["project"]["name"] == "Relocated project"
+        assert current["project"]["model_scale_denominator"] == pytest.approx(40)
+        assert [item["condition_number"] for item in current["designConditions"]] == ["DC1"]
+
+        with closing(sqlite3.connect(source)) as connection:
+            assert connection.execute("SELECT name FROM project WHERE id = 1").fetchone()[0] == "Arbitrary location project"
+            assert connection.execute("SELECT COUNT(*) FROM design_condition").fetchone()[0] == 0
+        with closing(sqlite3.connect(destination)) as connection:
+            assert connection.execute("SELECT name FROM project WHERE id = 1").fetchone()[0] == "Relocated project"
+            assert connection.execute("SELECT COUNT(*) FROM design_condition").fetchone()[0] == 1
+    finally:
+        state.shutdown()
