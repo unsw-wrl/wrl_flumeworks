@@ -33,6 +33,7 @@ include = [
   "src/flumeworks/**/*.css",
   "src/flumeworks/**/*.js",
   "src/flumeworks/**/*.json",
+  "src/flumeworks/**/*.png",
 ]
 
 [tool.pytest.ini_options]

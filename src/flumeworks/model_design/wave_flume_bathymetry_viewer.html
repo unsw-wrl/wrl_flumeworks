@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Wave Flume CAD &amp; Bathymetry Viewer</title>
 <style>
-  :root { color-scheme: light; --ink:#172234; --muted:#5e6c7d; --line:#d6dde6; --panel:#f7f9fc; --accent:#006d77; --accent2:#e6532f; --danger:#b42318; }
+  :root { color-scheme: light; --ink:#172234; --muted:#5e6c7d; --line:#d6dde6; --panel:#f7f9fc; --accent:#005daa; --accent2:#2b7abd; --danger:#b42318; }
   * { box-sizing:border-box; }
   html, body { margin:0; width:100%; height:100%; overflow:hidden; font:14px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:#eef2f6; }
   button, input, select { font:inherit; }
@@ -28,9 +28,9 @@
   input[type="color"] { width:40px; height:30px; border:1px solid #b9c4d0; border-radius:5px; padding:2px; background:white; }
   .app { display:grid; grid-template-columns:330px minmax(0,1fr); width:100%; height:100%; }
   .sidebar { min-width:0; overflow:auto; border-right:1px solid #bac5d1; background:var(--panel); box-shadow:2px 0 8px #1b2b3b15; z-index:3; }
-  .brand { position:sticky; top:0; z-index:2; padding:14px 16px 12px; color:#fff; background:linear-gradient(135deg,#123849,#006d77); }
+  .brand { position:sticky; top:0; z-index:2; padding:14px 16px 12px; color:#fff; background:linear-gradient(135deg,#005daa,#2b7abd); }
   .brand h1 { margin:0 0 3px; font-size:17px; line-height:1.2; }
-  .brand p { margin:0; color:#d8eef0; font-size:12px; }
+  .brand p { margin:0; color:#e1effa; font-size:12px; }
   .section { padding:12px 14px; border-bottom:1px solid var(--line); }
   .section h2 { margin:0 0 9px; font-size:13px; letter-spacing:.02em; }
   .section p { margin:6px 0; color:var(--muted); font-size:12px; }
@@ -39,7 +39,7 @@
   details.panel > summary::-webkit-details-marker { display:none; }
   details.panel > summary::after { content:"▸"; color:var(--accent); transition:transform .15s; }
   details.panel[open] > summary::after { transform:rotate(90deg); }
-  details.panel[open] > summary { background:#eef5f7; }
+  details.panel[open] > summary { background:#eff6fc; }
   .panel-body { padding:0 14px 12px; }
   .row { display:flex; gap:7px; align-items:center; margin:7px 0; }
   .row > label { flex:0 0 auto; }
@@ -86,14 +86,14 @@
   .right-extension-line { fill:none; stroke-linejoin:round; stroke-linecap:round; vector-effect:non-scaling-stroke; }
   .bathy-segment-hit { fill:none; stroke:transparent; stroke-width:14; vector-effect:non-scaling-stroke; pointer-events:stroke; cursor:pointer; }
   #drawing.measuring .bathy-segment-hit { pointer-events:none; }
-  .bathy-segment-highlight { fill:none; stroke:#006d77; stroke-width:5; stroke-linecap:round; vector-effect:non-scaling-stroke; pointer-events:none; }
+  .bathy-segment-highlight { fill:none; stroke:#005daa; stroke-width:5; stroke-linecap:round; vector-effect:non-scaling-stroke; pointer-events:none; }
   .bathy-point { stroke:#fff; stroke-width:1.5; vector-effect:non-scaling-stroke; cursor:pointer; }
   #drawing.measuring .bathy-point { pointer-events:none; }
   .point-dimension-line { fill:none; stroke:#0f62a5; stroke-width:1.5; stroke-dasharray:4 4; vector-effect:non-scaling-stroke; marker-start:url(#pointDimensionArrow); marker-end:url(#pointDimensionArrow); }
   .point-dimension-label { fill:#173f5f; font-weight:700; text-anchor:middle; dominant-baseline:middle; paint-order:stroke; stroke:#fff; stroke-width:4; stroke-linejoin:round; }
   #pointDimensionsRoot { pointer-events:none; }
-  .segment-dimension-line { fill:none; stroke:#006d77; stroke-width:1.5; stroke-dasharray:4 4; vector-effect:non-scaling-stroke; marker-start:url(#segmentDimensionArrow); marker-end:url(#segmentDimensionArrow); }
-  .segment-dimension-label { fill:#005f68; font-weight:700; dominant-baseline:middle; paint-order:stroke; stroke:#fff; stroke-width:4; stroke-linejoin:round; }
+  .segment-dimension-line { fill:none; stroke:#005daa; stroke-width:1.5; stroke-dasharray:4 4; vector-effect:non-scaling-stroke; marker-start:url(#segmentDimensionArrow); marker-end:url(#segmentDimensionArrow); }
+  .segment-dimension-label { fill:#005daa; font-weight:700; dominant-baseline:middle; paint-order:stroke; stroke:#fff; stroke-width:4; stroke-linejoin:round; }
   #segmentDimensionsRoot { pointer-events:none; }
   .fixed-water-level { fill:none; stroke:#0f62a5; stroke-width:1.8; stroke-dasharray:9 5; stroke-opacity:.82; vector-effect:non-scaling-stroke; pointer-events:none; }
   .fixed-water-list { border:1px solid var(--line); background:#fff; border-radius:6px; }
@@ -103,7 +103,7 @@
   .wave-item { display:grid; grid-template-columns:18px 12px minmax(0,1fr); gap:7px; align-items:start; padding:7px; border-bottom:1px solid #edf0f4; }
   .wave-item:last-child { border-bottom:0; }
   .wave-item small { display:block; color:var(--muted); line-height:1.35; }
-  .wave-result { color:#006d77!important; }
+  .wave-result { color:#005daa!important; }
   .wave-flume-depth { color:#0f62a5!important; font-weight:650; }
   .connection-state { display:flex; align-items:center; gap:7px; margin:7px 0; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; }
   .connection-dot { width:10px; height:10px; flex:0 0 auto; border-radius:50%; background:#8793a0; box-shadow:0 0 0 3px #8793a022; }
@@ -118,7 +118,7 @@
   .model-results:empty { display:none; }
   .model-result { padding:7px 8px; border-bottom:1px solid #edf0f4; font-size:11px; font-variant-numeric:tabular-nums; }
   .model-result:last-child { border-bottom:0; }
-  .model-result strong { display:block; color:#006d77; }
+  .model-result strong { display:block; color:#005daa; }
   .model-result .animation-load { margin-top:6px; width:100%; }
   .swash-animation-player { margin-top:8px; padding:8px; border:1px solid #8abbd4; border-radius:6px; background:#f3f9fc; }
   .swash-animation-player strong { display:block; margin-bottom:6px; color:#075985; }

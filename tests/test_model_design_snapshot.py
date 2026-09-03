@@ -7,12 +7,12 @@ from flumeworks.model_design import wave_model_service
 
 
 EXPECTED_HASHES = {
-    "wave_flume_bathymetry_viewer.html": "d64d5a09f6b73d72887fd77e99909b3708dd3da6590bb626570485035e31d1a0",
+    "wave_flume_bathymetry_viewer.html": "2398328635217c33fc0e3bcb8817935f86be1e304da01332588f776a1effbb5b",
     "wave_model_service.py": "26fa8ea2eba9b819a1bc3dc91098b02e6acca9ef8e8cb902bd34bc425b70b3e1",
 }
 
 
-def test_imported_model_design_files_are_unchanged() -> None:
+def test_model_design_files_match_reviewed_snapshot() -> None:
     root = Path(wave_model_service.__file__).resolve().parent
     actual = {
         # The repository's existing attributes allow Windows checkouts to use
