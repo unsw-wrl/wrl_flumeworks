@@ -100,6 +100,8 @@
   .fixed-water-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-bottom:1px solid #edf0f4; }
   .fixed-water-item:last-child { border-bottom:0; }
   .wave-list { max-height:285px; overflow:auto; border:1px solid var(--line); background:#fff; border-radius:6px; }
+  .wave-select-all { display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:8px 9px; border:1px solid #bdd2df; border-radius:6px; background:#edf6fc; cursor:pointer; }
+  .wave-select-all small { margin-left:auto; color:var(--muted); }
   .wave-item { display:grid; grid-template-columns:18px 12px minmax(0,1fr); gap:7px; align-items:start; padding:7px; border-bottom:1px solid #edf0f4; }
   .wave-item:last-child { border-bottom:0; }
   .wave-item small { display:block; color:var(--muted); line-height:1.35; }
@@ -134,15 +136,26 @@
   .measure-popup strong { color:#0f62a5; }
   .placement-message { position:absolute; left:50%; top:12px; transform:translateX(-50%); z-index:2; display:none; padding:7px 11px; border-radius:6px; color:#fff; background:#d64b27e8; font-weight:650; box-shadow:0 2px 9px #0003; pointer-events:none; }
   body[data-workspace="model-design"] #localWaveModelPanel { display:none; }
-  body[data-workspace="wave-transformation"] .app { grid-template-columns:minmax(390px,470px) minmax(0,1fr); }
+  body[data-workspace="wave-transformation"] .app { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr); }
+  body[data-workspace="wave-transformation"] .sidebar { display:grid; grid-template-columns:minmax(420px,.9fr) minmax(520px,1.1fr); grid-template-rows:minmax(0,1fr) auto; width:100%; min-height:0; overflow:hidden; border-right:0; background:#eef5fa; }
   body[data-workspace="wave-transformation"] .sidebar > * { display:none; }
   body[data-workspace="wave-transformation"] .sidebar > #waveConditionsPanel,
   body[data-workspace="wave-transformation"] .sidebar > #localWaveModelPanel,
-  body[data-workspace="wave-transformation"] .sidebar > .sidebar-status { display:block; }
-  body[data-workspace="wave-transformation"] #localWaveModelPanel > summary { position:sticky; top:0; z-index:2; padding:16px; color:#fff; background:linear-gradient(135deg,#005daa,#2b7abd); font-size:16px; }
-  body[data-workspace="wave-transformation"] #localWaveModelPanel > summary::after { color:#fff; }
-  body[data-workspace="wave-transformation"] #localWaveModelPanel .panel-body { padding:8px 16px 18px; }
-  body[data-workspace="wave-transformation"] #waveConditionsPanel .wave-list { max-height:225px; }
+  body[data-workspace="wave-transformation"] .sidebar > .sidebar-status { display:block; grid-column:1/-1; }
+  body[data-workspace="wave-transformation"] #waveConditionsPanel,
+  body[data-workspace="wave-transformation"] #localWaveModelPanel { min-height:0; overflow:auto; border-right:1px solid var(--line); background:#fff; }
+  body[data-workspace="wave-transformation"] .sidebar > #waveConditionsPanel { grid-column:1; grid-row:1; }
+  body[data-workspace="wave-transformation"] .sidebar > #localWaveModelPanel { grid-column:2; grid-row:1; border-right:0; }
+  body[data-workspace="wave-transformation"] details.panel > summary { position:sticky; top:0; z-index:2; padding:16px; color:#fff; background:linear-gradient(135deg,#005daa,#2b7abd); font-size:16px; pointer-events:none; }
+  body[data-workspace="wave-transformation"] details.panel > summary::after { display:none; }
+  body[data-workspace="wave-transformation"] details.panel .panel-body { display:block; padding:12px 16px 18px; }
+  body[data-workspace="wave-transformation"] #waveConditionsPanel .wave-list { max-height:none; }
+  body[data-workspace="wave-transformation"] .viewer { display:none; }
+  body[data-workspace="wave-transformation"] .app.visuals-active { grid-template-rows:minmax(230px,1fr) minmax(0,2fr); }
+  body[data-workspace="wave-transformation"] .app.visuals-active .sidebar { grid-row:1; }
+  body[data-workspace="wave-transformation"] .app.visuals-active .viewer { display:block; grid-row:2; }
+  body[data-workspace="wave-transformation"] .app.visuals-active #localWaveModelPanel .panel-body { display:flex; flex-direction:column; }
+  body[data-workspace="wave-transformation"] .app.visuals-active #swashAnimationPlayer { order:-1; position:sticky; top:54px; z-index:3; margin:0 0 10px; }
   body[data-workspace="wave-transformation"] .viewport-toolbar #toggleSidebar { display:none; }
   @media (max-width:800px) {
     .app { grid-template-columns:1fr; }
@@ -166,7 +179,7 @@
       </div>
     </details>
 
-    <details class="section panel" open>
+    <details class="section panel">
       <summary>Scale &amp; Bathymetry</summary><div class="panel-body">
         <div class="scale-control"><span>Scale 1</span><span>:</span><input id="scaleInput" type="number" min="0.000001" step="any" value="50" aria-label="Scale denominator"></div>
         <p>Positive chainage plots left from the selected CAD point. The same scale is applied horizontally and vertically.</p>
@@ -197,6 +210,7 @@
       <summary>Wave conditions</summary><div class="panel-body">
         <p>Wave conditions are managed in Project Setup and update here automatically.</p>
         <div class="file-name" id="waveFileName"></div><p id="waveSummary"></p>
+        <label class="wave-select-all"><input id="selectAllWaveConditions" type="checkbox"><strong>Select all conditions</strong><small id="selectedWaveCount">0 selected</small></label>
         <div class="wave-list" id="waveConditionList"></div>
       </div>
     </details>
@@ -224,6 +238,7 @@
         <div id="modelResults" class="model-results"></div>
         <div id="swashAnimationPlayer" class="swash-animation-player" hidden>
           <strong id="swashAnimationTitle">SWASH surface animation</strong>
+          <div class="row"><label for="swashAnimationCondition">Visual condition</label><select id="swashAnimationCondition" class="grow"></select></div>
           <div class="row"><button id="swashAnimationPlay" class="primary">Play</button><input id="swashAnimationFrame" class="grow" type="range" min="0" max="0" value="0" aria-label="SWASH animation frame"></div>
           <div class="row"><span id="swashAnimationTime" class="grow">Prototype 0.00 s</span><button id="swashAnimationClose">Close</button></div>
           <div class="row"><label for="swashAnimationTimeBasis">Time</label><select id="swashAnimationTimeBasis" class="grow" title="Model time uses Froude square-root scaling"><option value="prototype" selected>Prototype</option><option value="model">Model</option></select><label for="swashAnimationSpeed">Speed</label><select id="swashAnimationSpeed"><option value="0.5">0.5×</option><option value="1">1×</option><option value="2" selected>2×</option><option value="5">5×</option><option value="10">10×</option></select></div>
@@ -340,6 +355,7 @@ function applyWorkspaceMode(mode){
   workspaceMode=mode==="wave-transformation"?"wave-transformation":mode==="model-design"?"model-design":"standalone";
   document.body.dataset.workspace=workspaceMode;
   if(workspaceMode==="wave-transformation"){$("localWaveModelPanel").open=true;$("waveConditionsPanel").open=true;}
+  if(workspaceMode==="model-design"){document.querySelectorAll("details.panel").forEach(panel=>{panel.open=false;});clearSwashAnimation();}
   requestAnimationFrame(()=>{refreshScreenSizedSymbols();applyView();});
 }
 const svg = $("drawing");
@@ -380,6 +396,7 @@ let swashAnimationPlaying = false;
 let swashAnimationHandle = null;
 let swashAnimationLastTick = null;
 let swashAnimationClockTime = 0;
+let latestModelResults = [];
 
 function modelServiceBase(){
   return location.protocol==="http:"&&["127.0.0.1","localhost"].includes(location.hostname)?"":"http://127.0.0.1:8765";
@@ -439,8 +456,9 @@ async function checkModelService(){
 }
 
 function renderModelResults(results){
+  latestModelResults=Array.isArray(results)?results:[];
   const fragment=document.createDocumentFragment();
-  for(const item of results||[]){
+  for(const item of latestModelResults){
     const row=document.createElement("div");row.className="model-result";
     const title=document.createElement("strong");title.textContent=`Condition ${item.conditionId} · ${modelEngineLabel(item.engine||"model")} seawall toe`;
     const details=document.createElement("span"),toe=item.toe||{};
@@ -454,7 +472,7 @@ function renderModelResults(results){
     if(toe.modelNote){const note=document.createElement("small");note.style.display="block";note.style.color="var(--muted)";note.textContent=toe.modelNote;row.appendChild(note);}
     if(item.engine==="swash"&&item.animation&&item.animation.available){
       const button=document.createElement("button");button.type="button";button.className="animation-load";
-      button.textContent=`Load surface animation · final ${item.animation.retainedPeriods} Tp`;
+      button.textContent=`Generate visuals · final ${item.animation.retainedPeriods} Tp`;
       button.title=`Load ${item.animation.frames} frames × ${item.animation.points} locations (${formatBytes(item.animation.compressedBytes)}) from the helper.`;
       button.addEventListener("click",()=>loadSwashAnimation(item));row.appendChild(button);
     }else if(item.engine==="swash"&&item.animation&&item.animation.error){
@@ -463,6 +481,9 @@ function renderModelResults(results){
     fragment.appendChild(row);
   }
   $("modelResults").replaceChildren(fragment);
+  const visualSelect=$("swashAnimationCondition"),visualOptions=document.createDocumentFragment();
+  latestModelResults.forEach((item,index)=>{if(item.engine==="swash"&&item.animation&&item.animation.available){const option=document.createElement("option");option.value=String(index);option.textContent=`Condition ${item.conditionId}`;visualOptions.appendChild(option);}});
+  visualSelect.replaceChildren(visualOptions);visualSelect.disabled=!visualSelect.options.length;
 }
 
 function formatBytes(value){
@@ -481,7 +502,7 @@ function stopSwashAnimationPlayback(){
 function clearSwashAnimation(){
   stopSwashAnimationPlayback();swashAnimation=null;swashAnimationFrameIndex=0;swashAnimationClockTime=0;
   $("swashSurfaceRoot").style.display="none";$("swashSurfaceLine").removeAttribute("points");
-  $("swashAnimationPlayer").hidden=true;
+  $("swashAnimationPlayer").hidden=true;$("app").classList.remove("visuals-active");
 }
 
 function renderSwashAnimationFrame(){
@@ -535,7 +556,8 @@ function validateSwashAnimation(data){
 
 async function loadSwashAnimation(item){
   const animation=item.animation||{};if(!animation.url)return;
-  stopSwashAnimationPlayback();$("swashAnimationPlayer").hidden=false;$("swashAnimationTitle").textContent=`Condition ${item.conditionId} · loading SWASH surface…`;$("swashAnimationMeta").textContent="Reading the external compressed result from the local helper…";
+  stopSwashAnimationPlayback();$("app").classList.add("visuals-active");$("swashAnimationPlayer").hidden=false;$("swashAnimationTitle").textContent=`Condition ${item.conditionId} · loading SWASH surface…`;$("swashAnimationMeta").textContent="Reading the external compressed result from the local helper…";
+  const resultIndex=latestModelResults.indexOf(item);if(resultIndex>=0)$("swashAnimationCondition").value=String(resultIndex);
   try{
     const response=await fetch(modelServiceUrl(animation.url),{cache:"no-store"});if(!response.ok)throw new Error(`Helper returned HTTP ${response.status}`);
     swashAnimation=validateSwashAnimation(await response.json());swashAnimationFrameIndex=0;swashAnimationClockTime=swashAnimation.frameTimes[0];
@@ -1299,6 +1321,12 @@ function redrawFixedWaterLevels(){
   refreshMeasurementConnections();
 }
 
+function updateWaveSelectionControls(){
+  const control=$("selectAllWaveConditions"),selected=activeWaveRows.size,total=waveConditions.length;
+  control.disabled=total===0;control.checked=total>0&&selected===total;control.indeterminate=selected>0&&selected<total;
+  $("selectedWaveCount").textContent=`${selected} of ${total} selected`;
+}
+
 function renderWaveConditionList(){
   $("waveFileName").textContent=`Loaded: ${waveLoadedFilename}`;
   $("waveSummary").textContent=`${waveConditions.length} valid condition${waveConditions.length===1?"":"s"}; select rows to draw.`;
@@ -1306,7 +1334,7 @@ function renderWaveConditionList(){
   waveConditions.forEach((condition,index)=>{
     const label=document.createElement("label");label.className="wave-item";
     const check=document.createElement("input");check.type="checkbox";check.checked=activeWaveRows.has(index);
-    check.addEventListener("change",()=>{if(check.checked)activeWaveRows.add(index);else activeWaveRows.delete(index);redrawWaveConditions(true);updateLocalModelControls();});
+    check.addEventListener("change",()=>{if(check.checked)activeWaveRows.add(index);else activeWaveRows.delete(index);updateWaveSelectionControls();redrawWaveConditions(true);updateLocalModelControls();});
     const swatch=document.createElement("span");swatch.className="swatch";swatch.style.background=WAVE_COLOURS[index%WAVE_COLOURS.length];
     const info=document.createElement("span"),title=document.createElement("strong"),details=document.createElement("small"),flumeDepth=document.createElement("small"),result=document.createElement("small");
     title.textContent=`Condition ${condition.conditionId}${condition.ari?` · ARI ${condition.ari}`:""}`;
@@ -1316,6 +1344,7 @@ function renderWaveConditionList(){
     info.append(title,details,flumeDepth,result);label.append(check,swatch,info);fragment.appendChild(label);
   });
   $("waveConditionList").replaceChildren(fragment);
+  updateWaveSelectionControls();
   updateWaveConditionDepths();
   updateLocalModelControls();
 }
@@ -1741,7 +1770,9 @@ $("modelEngine").addEventListener("change",refreshModelEngineUI);
 $("swashAnimationPlay").addEventListener("click",toggleSwashAnimationPlayback);
 $("swashAnimationFrame").addEventListener("input",event=>{if(!swashAnimation)return;stopSwashAnimationPlayback();swashAnimationFrameIndex=Math.max(0,Math.min(swashAnimation.frameTimes.length-1,Number(event.target.value)||0));swashAnimationClockTime=swashAnimation.frameTimes[swashAnimationFrameIndex];renderSwashAnimationFrame();});
 $("swashAnimationTimeBasis").addEventListener("change",()=>{swashAnimationLastTick=null;renderSwashAnimationFrame();});
+$("swashAnimationCondition").addEventListener("change",event=>{const item=latestModelResults[Number(event.target.value)];if(item)loadSwashAnimation(item);});
 $("swashAnimationClose").addEventListener("click",clearSwashAnimation);
+$("selectAllWaveConditions").addEventListener("change",event=>{activeWaveRows=event.target.checked?new Set(waveConditions.map((_,index)=>index)):new Set();renderWaveConditionList();redrawWaveConditions(true);});
 $("setAnchor").addEventListener("click",()=>{if(measureMode)clearMeasurement();placementMode=!placementMode;updatePlacementUI();});
 $("clearAnchor").addEventListener("click",()=>{anchor=null;placementMode=false;$("anchorX").value="";$("anchorY").value="";$("anchorRoot").style.display="none";redrawBathymetry();updatePlacementUI();setStatus("Bathymetry anchor cleared.");});
 for (const id of ["anchorX","anchorY"]) $(id).addEventListener("change",()=>{const x=Number($("anchorX").value),y=Number($("anchorY").value);if(Number.isFinite(x)&&Number.isFinite(y))setAnchor({x,y});else setStatus("Anchor X and Y must both be valid CAD coordinates in millimetres.","error");});

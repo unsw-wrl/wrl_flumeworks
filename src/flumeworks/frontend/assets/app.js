@@ -43,6 +43,7 @@ function showView(name) {
   currentView = name;
   document.querySelectorAll(".workspace").forEach(view => view.classList.toggle("active", view.id === `${name.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}View`));
   document.querySelectorAll(".nav-item").forEach(button => { const active = button.dataset.view === name; button.classList.toggle("active", active); button.setAttribute("aria-selected", String(active)); });
+  $("toolsMenuToggle").classList.toggle("active", name === "tools");
   placeModelDesignFrame();
 }
 
@@ -81,6 +82,12 @@ function setProjectMenu(open) {
   menu.hidden = !open; toggle.setAttribute("aria-expanded", String(open));
 }
 
+function setToolsMenu(open) {
+  const menu = $("toolsMenu"), toggle = $("toolsMenuToggle");
+  menu.hidden = !open; toggle.setAttribute("aria-expanded", String(open));
+  if (open) setProjectMenu(false);
+}
+
 function setNewProjectModal(open) {
   $("newProjectModal").hidden = !open;
   if (open) {
@@ -96,6 +103,7 @@ function projectEditSignature() {
     name: $("editProjectName").value.trim(),
     destination_path: $("editProjectPath").value.trim(),
     model_scale_denominator: $("editProjectScale").value.trim(),
+    description: $("editProjectDescription").value.trim(),
   });
 }
 
@@ -113,6 +121,7 @@ function beginProjectEditing() {
   $("editProjectName").value = project.name || "";
   $("editProjectPath").value = project.database_path || "";
   $("editProjectScale").value = project.model_scale_denominator ?? "";
+  $("editProjectDescription").value = project.description || "";
   projectEditInitial = projectEditSignature();
   $("editProjectNumber").focus();
 }
@@ -335,12 +344,13 @@ function renderCurrentProject() {
   const project = current.project, conditions = current.designConditions || [], scale = projectScale();
   $("activeProjectBadge").textContent = project.project_number || project.name; $("currentProjectName").textContent = project.name; $("currentFacility").textContent = project.facility_name;
   $("currentProjectNumber").textContent = textOrDash(project.project_number); $("currentDatabase").textContent = project.database_path; $("currentDatabase").title = project.database_path;
-  $("currentUpdated").textContent = new Date(project.updated_at).toLocaleString(); $("currentDescription").textContent = project.description || "No project description.";
+  $("currentUpdated").textContent = new Date(project.updated_at).toLocaleString(); $("currentDescription").textContent = project.description || "";
+  $("currentDescription").hidden = !project.description || projectEditMode;
   $("currentProjectScale").textContent = scale ? `1:${scale} · time scale 1:${Math.sqrt(scale).toFixed(2)}` : "Not set";
   $("saveState").textContent = current.dirty ? "Unsaved changes" : "Saved"; $("saveState").classList.toggle("unsaved", Boolean(current.dirty));
   $("saveProject").classList.toggle("dirty", Boolean(current.dirty));
   $("saveProject").title = current.dirty ? "Save unsaved project changes" : "Save project";
-  $("projectSummary").hidden = projectEditMode; $("editProjectForm").hidden = !projectEditMode; $("editProject").hidden = projectEditMode;
+  $("currentProjectCard").classList.toggle("project-editing", projectEditMode); $("editProject").hidden = projectEditMode;
   $("editProject").disabled = conditionEditMode; $("editConditions").disabled = projectEditMode; $("loadWaveConditionsCsv").disabled = projectEditMode || conditionEditMode;
   const displayedConditions = conditionEditMode ? conditionDraft : conditions;
   $("conditionCount").textContent = `${displayedConditions.length} condition${displayedConditions.length === 1 ? "" : "s"}`;
@@ -470,7 +480,6 @@ function parseDesignConditionsCsv(text) {
 }
 
 document.querySelectorAll(".nav-item").forEach(button => button.addEventListener("click", () => showView(button.dataset.view)));
-document.querySelectorAll(".tool-tab").forEach(button => button.addEventListener("click", () => showToolTab(button.dataset.toolTab)));
 $("sidebarToggle").addEventListener("click", () => setSidebarCollapsed(!document.querySelector(".app-shell").classList.contains("sidebar-collapsed")));
 try { setSidebarCollapsed(localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true"); } catch { setSidebarCollapsed(false); }
 
@@ -496,7 +505,7 @@ $("editProjectForm").addEventListener("submit", async event => {
   event.preventDefault();
   const destination = $("editProjectPath").value.trim(), originalPath = bootstrap.currentProject.project.database_path;
   const scaleText = $("editProjectScale").value.trim();
-  const request = {destination_path: destination, name: $("editProjectName").value.trim(), project_number: $("editProjectNumber").value.trim(), facility: $("editFacilitySelect").value, model_scale_denominator: scaleText === "" ? null : Number(scaleText)};
+  const request = {destination_path: destination, name: $("editProjectName").value.trim(), project_number: $("editProjectNumber").value.trim(), facility: $("editFacilitySelect").value, model_scale_denominator: scaleText === "" ? null : Number(scaleText), description: $("editProjectDescription").value.trim()};
   try {
     await persistModelDesign();
     const payload = await api("/api/projects/current", {method: "PUT", body: JSON.stringify(request)});
@@ -546,6 +555,11 @@ $("projectMenuToggle").addEventListener("click", event => { event.stopPropagatio
 $("closeProjectMenu").addEventListener("click", () => setProjectMenu(false));
 $("projectMenu").addEventListener("click", event => event.stopPropagation());
 document.addEventListener("click", () => setProjectMenu(false));
+$("toolsMenuToggle").addEventListener("click", event => { event.stopPropagation(); setToolsMenu($("toolsMenu").hidden); });
+$("closeToolsMenu").addEventListener("click", () => setToolsMenu(false));
+$("toolsMenu").addEventListener("click", event => event.stopPropagation());
+document.querySelectorAll("[data-tool-action]").forEach(button => button.addEventListener("click", () => { showToolTab(button.dataset.toolAction); showView("tools"); setToolsMenu(false); }));
+document.addEventListener("click", () => setToolsMenu(false));
 $("newProjectAction").addEventListener("click", () => setNewProjectModal(true));
 $("emptyNewProject").addEventListener("click", () => setNewProjectModal(true));
 $("emptyOpenProject").addEventListener("click", async () => openProject(await nativePath("choose_open_project")));
@@ -556,6 +570,7 @@ document.addEventListener("keydown", event => {
   if (event.key !== "Escape") return;
   if (!$("newProjectModal").hidden) setNewProjectModal(false);
   else if (!$("projectMenu").hidden) setProjectMenu(false);
+  else if (!$("toolsMenu").hidden) setToolsMenu(false);
 });
 
 $("saveProject").addEventListener("click", saveProject);

@@ -70,6 +70,7 @@ def test_project_details_can_be_updated_together(tmp_path: Path) -> None:
         project_number="WRL2042",
         facility="flume_0_9m",
         model_scale_denominator=35,
+        description="Updated description",
     )
 
     project = database.project()
@@ -78,6 +79,7 @@ def test_project_details_can_be_updated_together(tmp_path: Path) -> None:
     assert project.facility == "flume_0_9m"
     assert project.facility_name == "0.9 m wave flume"
     assert project.model_scale_denominator == pytest.approx(35)
+    assert project.description == "Updated description"
 
 
 def test_import_replaces_conditions_and_records_csv_name(tmp_path: Path) -> None:

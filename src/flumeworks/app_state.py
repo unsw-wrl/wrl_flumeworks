@@ -198,6 +198,7 @@ class ApplicationState:
         project_number: str,
         facility: str,
         model_scale_denominator: float | None,
+        description: str | None = None,
     ) -> dict[str, Any]:
         with self._lock:
             database = self._require_editable()
@@ -223,6 +224,7 @@ class ApplicationState:
                     project_number=project_number,
                     facility=facility,
                     model_scale_denominator=model_scale_denominator,
+                    description=description,
                 )
                 self._dirty = True
                 if path_changed:
@@ -233,6 +235,7 @@ class ApplicationState:
                     project_number=original.project_number,
                     facility=original.facility,
                     model_scale_denominator=original.model_scale_denominator,
+                    description=original.description,
                 )
                 self._dirty = original_dirty
                 if new_lease:

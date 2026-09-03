@@ -46,12 +46,14 @@ def test_project_model_design_save_and_backup_workflow(tmp_path: Path) -> None:
                 "project_number": "WRL0100",
                 "facility": "flume_3m",
                 "model_scale_denominator": 45,
+                "description": "Updated through the API",
             },
         )
         assert project_updated.status_code == 200
         assert project_updated.json()["currentProject"]["project"]["name"] == "Updated API project"
         assert project_updated.json()["currentProject"]["project"]["facility_name"] == "3 m wave flume"
         assert project_updated.json()["currentProject"]["project"]["model_scale_denominator"] == 45
+        assert project_updated.json()["currentProject"]["project"]["description"] == "Updated through the API"
         assert project_updated.json()["currentProject"]["dirty"] is True
 
         model_design = {

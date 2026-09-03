@@ -21,7 +21,7 @@ class ProjectCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     project_number: str = Field(default="", max_length=100)
     facility: str
-    description: str = Field(default="", max_length=4000)
+    description: str | None = Field(default=None, max_length=4000)
 
 
 class ProjectOpenRequest(BaseModel):
@@ -34,6 +34,7 @@ class ProjectUpdateRequest(BaseModel):
     project_number: str = Field(default="", max_length=100)
     facility: str
     model_scale_denominator: float | None = Field(default=None, gt=0, le=10000)
+    description: str = Field(default="", max_length=4000)
 
 
 class DesignConditionRequest(BaseModel):

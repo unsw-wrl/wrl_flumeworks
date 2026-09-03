@@ -184,7 +184,7 @@ class ProjectDatabase:
         name: str,
         project_number: str,
         facility: str,
-        description: str = "",
+        description: str | None = None,
     ) -> "ProjectDatabase":
         destination = Path(path).resolve()
         if destination.exists():
@@ -303,6 +303,7 @@ class ProjectDatabase:
         project_number: str,
         facility: str,
         model_scale_denominator: float | None,
+        description: str = "",
     ) -> None:
         clean_name = name.strip()
         if not clean_name:
@@ -316,13 +317,14 @@ class ProjectDatabase:
             connection.execute(
                 """UPDATE project
                    SET name = ?, project_number = ?, facility = ?,
-                       model_scale_denominator = ?, updated_at = ?
+                       model_scale_denominator = ?, description = COALESCE(?, description), updated_at = ?
                    WHERE id = 1""",
                 (
                     clean_name,
                     project_number.strip(),
                     facility,
                     model_scale_denominator,
+                    description.strip() if description is not None else None,
                     now,
                 ),
             )

@@ -99,6 +99,7 @@ def test_project_details_and_file_location_update_safely(tmp_path: Path) -> None
             project_number="WRL2042",
             facility="flume_3m",
             model_scale_denominator=40,
+            description="Relocated project description",
         )
 
         assert destination.is_file()
@@ -109,6 +110,7 @@ def test_project_details_and_file_location_update_safely(tmp_path: Path) -> None
         assert current["project"]["database_path"] == str(destination.resolve())
         assert current["project"]["name"] == "Relocated project"
         assert current["project"]["model_scale_denominator"] == pytest.approx(40)
+        assert current["project"]["description"] == "Relocated project description"
         assert [item["condition_number"] for item in current["designConditions"]] == ["DC1"]
 
         with closing(sqlite3.connect(source)) as connection:
