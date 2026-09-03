@@ -2,6 +2,17 @@
 
 const $=id=>document.getElementById(id);
 let bootstrap=null;
+const SIDEBAR_STORAGE_KEY="flumeworks.sidebarCollapsed";
+
+function setSidebarCollapsed(collapsed){
+  const shell=document.querySelector(".app-shell"),button=$("sidebarToggle");
+  shell.classList.toggle("sidebar-collapsed",collapsed);
+  button.textContent=collapsed?"›":"‹";
+  button.setAttribute("aria-expanded",String(!collapsed));
+  button.setAttribute("aria-label",collapsed?"Expand sidebar":"Collapse sidebar");
+  button.title=collapsed?"Expand sidebar":"Collapse sidebar";
+  try{localStorage.setItem(SIDEBAR_STORAGE_KEY,String(collapsed));}catch{}
+}
 
 function setStatus(message,kind=""){
   $("status").textContent=message;
@@ -80,6 +91,8 @@ async function openProject(projectUuid){
 }
 
 document.querySelectorAll(".nav-item").forEach(button=>button.addEventListener("click",()=>showView(button.dataset.view)));
+$("sidebarToggle").addEventListener("click",()=>setSidebarCollapsed(!document.querySelector(".app-shell").classList.contains("sidebar-collapsed")));
+try{setSidebarCollapsed(localStorage.getItem(SIDEBAR_STORAGE_KEY)==="true");}catch{setSidebarCollapsed(false);}
 $("refreshProjects").addEventListener("click",()=>refresh("Project list refreshed.").catch(error=>setStatus(error.message,"error")));
 $("createProjectForm").addEventListener("submit",async event=>{
   event.preventDefault();const form=event.currentTarget,data=new FormData(form);
@@ -95,4 +108,3 @@ $("conditionForm").addEventListener("submit",async event=>{
 });
 
 refresh().catch(error=>setStatus(`FlumeWorks could not start: ${error.message}`,"error"));
-

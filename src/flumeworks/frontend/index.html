@@ -8,16 +8,17 @@
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
+    <aside id="appSidebar" class="sidebar">
       <header class="brand">
         <span class="brand-mark" role="img" aria-label="Water Research Laboratory logo"></span>
         <div><strong>WRL FlumeWorks</strong><small>Physical modelling workspace</small></div>
       </header>
+      <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-controls="appSidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">‹</button>
       <nav aria-label="Application workspaces">
-        <button class="nav-item active" data-view="project" aria-selected="true">
+        <button class="nav-item active" data-view="project" aria-selected="true" title="Project">
           <span>01</span><div><strong>Project</strong><small>Setup and design conditions</small></div>
         </button>
-        <button class="nav-item" data-view="model-design" aria-selected="false">
+        <button class="nav-item" data-view="model-design" aria-selected="false" title="Model Design">
           <span>02</span><div><strong>Model Design</strong><small>Flume CAD and bathymetry</small></div>
         </button>
       </nav>
