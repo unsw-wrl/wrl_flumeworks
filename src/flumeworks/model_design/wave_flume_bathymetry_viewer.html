@@ -184,13 +184,10 @@
   .feasibility-header p { max-width:760px; margin:4px 0 0; color:var(--muted); font-size:12px; }
   .feasibility-summary { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
   .feasibility-summary span { padding:6px 10px; border:1px solid #cbdbe5; border-radius:999px; color:#334e5d; background:#f7fafc; font-size:12px; font-weight:700; }
-  .feasibility-condition { margin-top:16px; padding-top:15px; border-top:1px solid #d8e3ea; }
-  .feasibility-condition:first-of-type { margin-top:0; padding-top:0; border-top:0; }
-  .feasibility-condition-header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:9px; }
-  .feasibility-condition-header h3 { margin:0; color:#173f5f; font-size:16px; }
-  .feasibility-condition-header small { color:var(--muted); }
   .feasibility-checks { display:grid; grid-template-columns:repeat(3,minmax(220px,1fr)); gap:10px; }
-  .feasibility-check { min-height:94px; padding:11px 12px; border:1px solid #c7d8e5; border-left:4px solid #64748b; border-radius:8px; background:#f8fafc; }
+  .feasibility-check { min-height:94px; padding:11px 12px; border:1px solid #c7d8e5; border-left:4px solid #64748b; border-radius:8px; background:#f8fafc; cursor:pointer; transition:transform .12s ease,box-shadow .12s ease; }
+  .feasibility-check:hover { transform:translateY(-1px); box-shadow:0 5px 14px #173f5f18; }
+  .feasibility-check:focus-visible { outline:3px solid #58a6d6; outline-offset:2px; }
   .feasibility-check.ok { border-left-color:#0b8a5a; background:#e3f4ed; }
   .feasibility-check.marginal { border-left-color:#c57a08; background:#fff5d9; }
   .feasibility-check.fail { border-left-color:#cf3939; background:#fbe5e3; }
@@ -210,6 +207,19 @@
   .feasibility-info-popup .reference { padding-top:7px; border-top:1px solid #d8e3ea; color:#516879; }
   .feasibility-info-popup a { color:#005daa; font-weight:700; }
   .feasibility-info-close { position:absolute; right:8px; top:8px; width:24px; height:24px; padding:0; border:0; color:#496477; background:transparent; font-size:18px; }
+  .feasibility-calc-backdrop { position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:20px; background:#10263a80; }
+  .feasibility-calc-backdrop[hidden] { display:none; }
+  .feasibility-calc-dialog { width:min(900px,calc(100vw - 40px)); max-height:calc(100vh - 40px); overflow:auto; border:1px solid #9bb9cb; border-radius:10px; background:#fff; box-shadow:0 18px 48px #10263a55; }
+  .feasibility-calc-header { position:sticky; top:0; z-index:1; display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding:16px 18px; border-bottom:1px solid #d8e3ea; background:#f4f9fc; }
+  .feasibility-calc-header h3 { margin:0; color:#004f91; font-size:18px; }
+  .feasibility-calc-header p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+  .feasibility-calc-close { width:30px; height:30px; flex:0 0 auto; padding:0; border:0; color:#496477; background:transparent; font-size:22px; }
+  .feasibility-calc-table-wrap { padding:12px 18px 18px; overflow-x:auto; }
+  .feasibility-calc-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .feasibility-calc-table th { padding:9px 10px; border-bottom:2px solid #bdd0dc; color:#334e5d; background:#fff; text-align:left; }
+  .feasibility-calc-table td { padding:10px; border-bottom:1px solid #d8e3ea; color:#334e5d; vertical-align:top; }
+  .feasibility-calc-table tbody tr:nth-child(even) { background:#f3f8fb; }
+  .feasibility-calc-table td:first-child { white-space:nowrap; font-weight:700; }
   @media (max-width:1100px) { .feasibility-checks { grid-template-columns:repeat(2,minmax(220px,1fr)); } }
   .connection-state { display:flex; align-items:center; gap:7px; margin:7px 0; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; }
   .connection-dot { width:10px; height:10px; flex:0 0 auto; border-radius:50%; background:#8793a0; box-shadow:0 0 0 3px #8793a022; }
@@ -460,6 +470,20 @@
         <p id="feasibilityInfoReference" class="reference"></p>
         <a id="feasibilityInfoLink" href="#" target="_blank" rel="noopener">Open reference PDF</a>
       </aside>
+      <div id="feasibilityCalcBackdrop" class="feasibility-calc-backdrop" hidden>
+        <section class="feasibility-calc-dialog" role="dialog" aria-modal="true" aria-labelledby="feasibilityCalcTitle">
+          <header class="feasibility-calc-header">
+            <div><h3 id="feasibilityCalcTitle"></h3><p id="feasibilityCalcSubtitle"></p></div>
+            <button id="feasibilityCalcClose" class="feasibility-calc-close" type="button" aria-label="Close condition calculations">×</button>
+          </header>
+          <div class="feasibility-calc-table-wrap">
+            <table class="feasibility-calc-table">
+              <thead><tr><th>Condition</th><th>Result</th><th>Calculation</th></tr></thead>
+              <tbody id="feasibilityCalcRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </section>
     <div class="placement-message" id="placementMessage">Click the CAD drawing to place the bathymetry reference point</div>
     <svg id="drawing" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-label="Wave flume CAD drawing">
@@ -1806,8 +1830,44 @@ function feasibilityStatus(ok,marginal){return ok?"ok":marginal?"marginal":"fail
 
 function feasibilityCheck(title,status,detail,referenceKey){return {title,status,detail,referenceKey};}
 
+const FEASIBILITY_STATUS_PRIORITY={ok:0,na:1,marginal:2,fail:3};
+
+function aggregateFeasibilityChecks(allResults){
+  if(!allResults.length)return [];
+  return allResults[0].checks.map((example,index)=>{
+    const calculations=allResults.map(result=>({conditionId:String(result.condition.conditionId),status:result.checks[index].status,detail:result.checks[index].detail}));
+    const status=calculations.reduce((worst,row)=>FEASIBILITY_STATUS_PRIORITY[row.status]>FEASIBILITY_STATUS_PRIORITY[worst]?row.status:worst,"ok");
+    const idsFor=resultStatus=>calculations.filter(row=>row.status===resultStatus).map(row=>row.conditionId).join(", ");
+    const summaries=[];
+    if(idsFor("fail"))summaries.push(`Failed on cond. ${idsFor("fail")}.`);
+    if(idsFor("marginal"))summaries.push(`Marginal on cond. ${idsFor("marginal")}.`);
+    if(idsFor("na"))summaries.push(`Not assessed for cond. ${idsFor("na")}.`);
+    if(status==="ok")summaries.push("All conditions passed.");
+    return {...example,status,detail:summaries.join(" "),calculations};
+  });
+}
+
 function closeFeasibilityInfo(){
   $("feasibilityInfoPopup").hidden=true;
+}
+
+function closeFeasibilityCalculations(){
+  $("feasibilityCalcBackdrop").hidden=true;
+}
+
+function showFeasibilityCalculations(check){
+  closeFeasibilityInfo();
+  $("feasibilityCalcTitle").innerHTML=check.title;
+  $("feasibilityCalcSubtitle").textContent=`Worst result: ${{ok:"OK",marginal:"MARGINAL",fail:"FAIL",na:"NOT ASSESSED"}[check.status]} · Project scale 1:${fmt(Number(projectContext.scaleDenominator),Number(projectContext.scaleDenominator)%1?2:0)}`;
+  const rows=$("feasibilityCalcRows");rows.replaceChildren();
+  for(const calculation of check.calculations){
+    const row=document.createElement("tr"),conditionCell=document.createElement("td"),statusCell=document.createElement("td"),detailCell=document.createElement("td");
+    conditionCell.textContent=`Condition ${calculation.conditionId}`;
+    const badge=document.createElement("span");badge.className=`feasibility-badge ${calculation.status}`;badge.textContent={ok:"OK",marginal:"MARGINAL",fail:"FAIL",na:"NOT ASSESSED"}[calculation.status];statusCell.appendChild(badge);
+    detailCell.innerHTML=calculation.detail;row.append(conditionCell,statusCell,detailCell);rows.appendChild(row);
+  }
+  $("feasibilityCalcBackdrop").hidden=false;
+  $("feasibilityCalcClose").focus();
 }
 
 function showFeasibilityInfo(button,check){
@@ -1826,7 +1886,8 @@ function showFeasibilityInfo(button,check){
 }
 
 function renderFeasibilityCheck(check){
-  const card=document.createElement("article");card.className=`feasibility-check ${check.status}`;
+  const card=document.createElement("article");card.className=`feasibility-check ${check.status}`;card.tabIndex=0;card.setAttribute("role","button");card.setAttribute("aria-label",`View calculations for ${check.title.replace(/<[^>]+>/g,"")}`);
+  card.addEventListener("click",()=>showFeasibilityCalculations(check));card.addEventListener("keydown",event=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();showFeasibilityCalculations(check);}});
   const header=document.createElement("div");header.className="feasibility-check-title";
   const title=document.createElement("span");title.innerHTML=check.title;
   const info=document.createElement("button");info.type="button";info.className="feasibility-info-button";info.textContent="i";info.setAttribute("aria-label",`Reference for ${title.textContent}`);info.addEventListener("click",event=>{event.stopPropagation();showFeasibilityInfo(info,check);});
@@ -1837,6 +1898,7 @@ function renderFeasibilityCheck(check){
 
 function runFeasibilityChecks(){
   closeFeasibilityInfo();
+  closeFeasibilityCalculations();
   const scale=Number(projectContext.scaleDenominator),hmaxFactor=Number($("feasibilityHmaxFactor").value),dnText=$("feasibilityArmourDn50").value.trim(),dn50Mm=dnText===""?null:Number(dnText);
   if(!(scale>0)){setStatus("Set a project scale in Project Setup before running feasibility checks.","error");return;}
   if(!waveConditions.length){setStatus("Add design wave conditions in Project Setup before running feasibility checks.","error");return;}
@@ -1873,16 +1935,10 @@ function runFeasibilityChecks(){
       : feasibilityCheck("Armour flow turbulent (Re<sub>D</sub> &gt; 3×10<sup>4</sup>)",feasibilityStatus(reynolds>=30000,reynolds>=10000),`Re<sub>D</sub> = ${fmt(reynolds,0)} using D<sub>n50</sub> ${fmt(dn50Mm,1)} mm (limit 30,000).`,"reynolds"));
     allResults.push({condition,hsModelM,tpModelS,localModelDepthM,checks});
   }
-  const resultsRoot=$("feasibilityResults");resultsRoot.replaceChildren();
+  const aggregatedChecks=aggregateFeasibilityChecks(allResults),resultsRoot=$("feasibilityResults");resultsRoot.replaceChildren();
   const counts={ok:0,marginal:0,fail:0,na:0};
-  allResults.forEach(result=>{
-    const section=document.createElement("section");section.className="feasibility-condition";
-    const header=document.createElement("header");header.className="feasibility-condition-header";
-    const title=document.createElement("h3");title.textContent=`Condition ${result.condition.conditionId}`;
-    const meta=document.createElement("small");meta.textContent=`Prototype Hₛ ${fmt(result.condition.waveHeight,2)} m · Tₚ ${fmt(result.condition.period,2)} s · WL ${fmt(result.condition.waterLevel,2)} m AHD | Model Hₛ ${fmt(result.hsModelM*1000,0)} mm · Tₚ ${fmt(result.tpModelS,2)} s`;
-    header.append(title,meta);const grid=document.createElement("div");grid.className="feasibility-checks";
-    result.checks.forEach(check=>{counts[check.status]++;grid.appendChild(renderFeasibilityCheck(check));});section.append(header,grid);resultsRoot.appendChild(section);
-  });
+  const grid=document.createElement("div");grid.className="feasibility-checks";
+  aggregatedChecks.forEach(check=>{counts[check.status]++;grid.appendChild(renderFeasibilityCheck(check));});resultsRoot.appendChild(grid);
   $("feasibilitySummary").replaceChildren(...[
     `${allResults.length} condition${allResults.length===1?"":"s"}`,
     `${counts.ok} passed`,`${counts.marginal} marginal`,`${counts.fail} failed`,`${counts.na} not assessed`
@@ -1890,7 +1946,7 @@ function runFeasibilityChecks(){
   const facilityName=projectContext.facilityName||facility?.name||"facility not set";
   $("feasibilitySubtitle").textContent=`Project scale 1:${fmt(scale,scale%1?2:0)} · ${facilityName} · ${fmt(bathyPrototypeM,1)} m prototype bathymetry span · Hmax/Hs ${fmt(hmaxFactor,2)}.`;
   document.body.dataset.waveView="feasibility";
-  setStatus(`Feasibility checks completed for ${allResults.length} condition${allResults.length===1?"":"s"}: ${counts.fail} failed and ${counts.marginal} marginal.`,counts.fail?"error":"success");
+  setStatus(`Feasibility checks completed for ${allResults.length} condition${allResults.length===1?"":"s"}: ${counts.fail} checks failed and ${counts.marginal} were marginal.`,counts.fail?"error":"success");
   $("feasibilityView").scrollTop=0;
 }
 
@@ -2311,12 +2367,14 @@ $("structureCsvFile").addEventListener("change",event=>{const file=event.target.
 $("reconnectModelService").addEventListener("click",checkModelService);
 $("runLocalModel").addEventListener("click",runLocalModel);
 $("runFeasibilityChecks").addEventListener("click",runFeasibilityChecks);
-$("closeFeasibilityView").addEventListener("click",()=>setWaveConditionsView("cad",true));
+$("closeFeasibilityView").addEventListener("click",()=>{closeFeasibilityInfo();closeFeasibilityCalculations();setWaveConditionsView("cad",true);});
 $("feasibilityInfoClose").addEventListener("click",closeFeasibilityInfo);
 $("feasibilityView").addEventListener("click",event=>{if(event.target===$("feasibilityView"))closeFeasibilityInfo();});
+$("feasibilityCalcClose").addEventListener("click",closeFeasibilityCalculations);
+$("feasibilityCalcBackdrop").addEventListener("click",event=>{if(event.target===$("feasibilityCalcBackdrop"))closeFeasibilityCalculations();});
 $("feasibilityHmaxFactor").addEventListener("input",event=>{const value=Number(event.target.value);if(value>=1&&value<=4)feasibilityHmaxFactor=value;});
 $("feasibilityArmourDn50").addEventListener("input",event=>{const textValue=event.target.value.trim(),value=Number(textValue);if(textValue==="")feasibilityArmourDn50Mm=null;else if(value>=0.1&&value<=1000)feasibilityArmourDn50Mm=value;});
-window.addEventListener("keydown",event=>{if(event.key==="Escape")closeFeasibilityInfo();});
+window.addEventListener("keydown",event=>{if(event.key==="Escape"){closeFeasibilityInfo();closeFeasibilityCalculations();}});
 $("showWaveCadView").addEventListener("click",()=>setWaveConditionsView("cad",true));
 $("showAchievableView").addEventListener("click",()=>setWaveConditionsView("achievable",true));
 for(const id of ["achievableFocusScale","achievableScaleMin","achievableScaleMax"]){$(id).addEventListener("input",()=>{if(normaliseAchievableScaleControls())requestAchievableChartRender();});}

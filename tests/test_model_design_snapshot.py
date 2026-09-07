@@ -9,7 +9,7 @@ from flumeworks.model_design import wave_model_service
 
 
 EXPECTED_HASHES = {
-    "wave_flume_bathymetry_viewer.html": "7b606e311384627abf3f32d91765cada43867d2e005b3d70ad17133b58641e11",
+    "wave_flume_bathymetry_viewer.html": "1794b7e2fa4fe0c6bb02f9668093b2e5caf327369153237fe656dfb8c11f2582",
     "wave_model_service.py": "86ccaf3c952d30b73f13016e2793d4cf6ea288ad830f5ea19fd571877cb05005",
 }
 
@@ -104,6 +104,10 @@ def test_feasibility_checks_use_project_context_and_linked_references() -> None:
     assert 'id="feasibilityPanel"' in html
     assert 'id="feasibilityView"' in html
     assert "function runFeasibilityChecks()" in html
+    assert "function aggregateFeasibilityChecks(allResults)" in html
+    assert 'id="feasibilityCalcBackdrop"' in html
+    assert "Failed on cond." in html
+    assert "All conditions passed." in html
     assert "projectContext.scaleDenominator" in html
     assert "condition.period/Math.sqrt(scale)" in html
     assert "condition.waveHeight/scale" in html
