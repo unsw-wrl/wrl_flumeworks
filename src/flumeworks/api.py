@@ -28,6 +28,10 @@ class ProjectOpenRequest(BaseModel):
     source_path: str = Field(min_length=1, max_length=2000)
 
 
+class RecentProjectRemoveRequest(BaseModel):
+    source_path: str = Field(min_length=1, max_length=2000)
+
+
 class ProjectUpdateRequest(BaseModel):
     destination_path: str = Field(min_length=1, max_length=2000)
     name: str = Field(min_length=1, max_length=200)
@@ -140,6 +144,11 @@ def create_app(state: ApplicationState) -> FastAPI:
         except ProjectError as exc:
             raise project_http_error(exc) from exc
         return {"currentProject": current, "recentProjects": state.recents.list()}
+
+    @app.post("/api/recent-projects/remove")
+    def remove_recent_project(request: RecentProjectRemoveRequest) -> dict[str, object]:
+        state.recents.remove(request.source_path)
+        return {"recentProjects": state.recents.list()}
 
     @app.put("/api/projects/current")
     def update_project(request: ProjectUpdateRequest) -> dict[str, object]:

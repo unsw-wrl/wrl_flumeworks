@@ -60,21 +60,36 @@ async function nativePath(method, ...args) {
   return window.prompt(promptText) || null;
 }
 
-function renderProjects() {
-  const root = $("projectList"), projects = bootstrap.recentProjects || [];
+function renderProjectList(root, projects) {
   root.replaceChildren();
   if (!projects.length) {
     const empty = document.createElement("p"); empty.className = "empty"; empty.textContent = "No recent FlumeWorks projects on this computer."; root.appendChild(empty); return;
   }
   for (const project of projects) {
     const row = document.createElement("div"); row.className = "project-row" + (project.available ? "" : " unavailable");
-    const info = document.createElement("div"), name = document.createElement("strong"), meta = document.createElement("small"), path = document.createElement("small"), button = document.createElement("button");
+    const info = document.createElement("div"), name = document.createElement("strong"), meta = document.createElement("small"), path = document.createElement("small"), actions = document.createElement("div"), button = document.createElement("button"), remove = document.createElement("button");
     name.textContent = project.name || "FlumeWorks project";
     meta.textContent = [project.project_number, project.facility_name, !project.available ? "Location unavailable" : ""].filter(Boolean).join(" · ");
     path.className = "path"; path.textContent = project.path || ""; path.title = project.path || "";
     button.type = "button"; button.className = "secondary"; button.textContent = "Open"; button.disabled = !project.available; button.addEventListener("click", () => openProject(project.path));
-    info.append(name, meta, path); row.append(info, button); root.appendChild(row);
+    remove.type = "button"; remove.className = "secondary recent-remove-button"; remove.textContent = "×"; remove.title = "Remove from recent projects only"; remove.setAttribute("aria-label",`Remove ${project.name || "project"} from recent projects`); remove.addEventListener("click", () => removeRecentProject(project));
+    actions.className = "project-row-actions"; actions.append(button, remove);
+    info.append(name, meta, path); row.append(info, actions); root.appendChild(row);
   }
+}
+
+function renderProjects() {
+  const projects = bootstrap.recentProjects || [];
+  renderProjectList($("projectList"), projects);
+  renderProjectList($("welcomeProjectList"), projects);
+}
+
+async function removeRecentProject(project) {
+  try {
+    const payload = await api("/api/recent-projects/remove", {method: "POST", body: JSON.stringify({source_path: project.path})});
+    bootstrap.recentProjects = payload.recentProjects; renderProjects();
+    setStatus(`Removed ${project.name || "the project"} from recent projects. Its .flumeworks file was not deleted.`, "success");
+  } catch (error) { setStatus(error.message, "error"); }
 }
 
 function setProjectMenu(open) {

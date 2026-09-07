@@ -127,6 +127,13 @@ def test_project_model_design_save_and_backup_workflow(tmp_path: Path) -> None:
         closed = client.post("/api/projects/close")
         assert closed.status_code == 200
         assert not project_path.with_name(project_path.name + ".lock").exists()
+
+        removed = client.post(
+            "/api/recent-projects/remove", json={"source_path": str(project_path)}
+        )
+        assert removed.status_code == 200
+        assert removed.json()["recentProjects"] == []
+        assert project_path.is_file()
     finally:
         state.shutdown()
 
@@ -151,6 +158,7 @@ def test_frontend_shell_is_served(tmp_path: Path) -> None:
         assert "Project options" in response.text
         assert "Save project" in response.text
         assert "Last Saved: —" in response.text
+        assert 'id="welcomeProjectList"' in response.text
         assert "Create a project database" in response.text
         assert "Model Design" in response.text
     finally:

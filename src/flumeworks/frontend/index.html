@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>WRL FlumeWorks</title>
-  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="/assets/styles.css?v=20260907-3">
 </head>
 <body>
   <div class="app-shell">
@@ -50,9 +50,15 @@
         <div id="status" class="status" role="status" aria-live="polite">Loading FlumeWorks…</div>
 
         <section id="noProjectCard" class="card empty-project-card">
-          <div class="empty-project-icon" aria-hidden="true">+</div>
-          <div><h2>Open or create a project</h2><p>Your recent projects and management options are always available from the gear button at the bottom left.</p></div>
-          <div class="card-actions"><button id="emptyOpenProject" class="primary" type="button">Open project</button><button id="emptyNewProject" class="secondary" type="button">New project</button></div>
+          <div class="empty-project-intro">
+            <div class="empty-project-icon" aria-hidden="true">+</div>
+            <div><h2>Open or create a project</h2><p>Choose a project file, create a new one, or quickly reopen a recent project below.</p></div>
+            <div class="card-actions"><button id="emptyOpenProject" class="primary" type="button">Open project</button><button id="emptyNewProject" class="secondary" type="button">New project</button></div>
+          </div>
+          <div class="welcome-recent-projects">
+            <div class="welcome-recent-heading"><strong>Recent projects</strong><small>Removing an item from this list does not delete its project file.</small></div>
+            <div id="welcomeProjectList" class="project-list"><p class="empty">No recent projects on this computer.</p></div>
+          </div>
         </section>
 
         <section id="currentProjectCard" class="card wide" hidden>
@@ -156,6 +162,6 @@
       </form>
     </section>
   </div>
-  <script src="/assets/app.js"></script>
+  <script src="/assets/app.js?v=20260907-3"></script>
 </body>
 </html>
