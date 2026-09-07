@@ -123,6 +123,49 @@
   .wave-item small { display:block; color:var(--muted); line-height:1.35; }
   .wave-result { color:#005daa!important; }
   .wave-flume-depth { color:#0f62a5!important; font-weight:650; }
+  .wave-view-selector { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 10px; }
+  .wave-view-selector button { min-height:48px; padding:7px 8px; text-align:left; line-height:1.25; }
+  .wave-view-selector button.active { color:#fff; border-color:var(--accent); background:var(--accent); font-weight:700; }
+  .achievable-controls { display:grid; gap:10px; }
+  .achievable-controls h3 { margin:1px 0 0; color:#334e5d; font-size:12px; }
+  .achievable-scale-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .achievable-scale-grid .focus-scale { grid-column:1/-1; }
+  .achievable-layer-list { overflow:auto; max-height:230px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  .achievable-layer-item { display:grid; grid-template-columns:18px 22px minmax(0,1fr); gap:7px; align-items:center; padding:7px 8px; border-bottom:1px solid #edf0f4; cursor:pointer; }
+  .achievable-layer-item:last-child { border-bottom:0; }
+  .achievable-line-swatch { width:22px; height:0; border-top:3px dashed currentColor; }
+  .achievable-dot-swatch { justify-self:center; width:10px; height:10px; border-radius:50%; background:currentColor; }
+  .achievable-layer-copy { min-width:0; }
+  .achievable-layer-copy strong, .achievable-layer-copy small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .achievable-layer-copy small { color:var(--muted); }
+  #achievableChartView { position:absolute; inset:0; z-index:1; display:none; padding:18px; overflow:auto; background:#edf5fb; }
+  body[data-wave-view="achievable"] #achievableChartView { display:flex; }
+  body[data-wave-view="achievable"] #drawing,
+  body[data-wave-view="achievable"] .coords,
+  body[data-wave-view="achievable"] .placement-message,
+  body[data-wave-view="achievable"] .tooltip,
+  body[data-wave-view="achievable"] .measure-popup,
+  body[data-wave-view="achievable"] #resetView { display:none!important; }
+  .achievable-chart-card { display:flex; flex:1; min-width:740px; min-height:520px; flex-direction:column; padding:18px; border:1px solid #c7d8e5; border-radius:10px; background:#fff; box-shadow:0 8px 28px #173f5f12; }
+  .achievable-chart-header { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:8px; }
+  .achievable-chart-header h2 { margin:0; color:#004f91; font-size:20px; }
+  .achievable-chart-header p { margin:3px 0 0; color:var(--muted); font-size:12px; }
+  .achievable-focus-badge { padding:6px 9px; border:1px solid #8abbd4; border-radius:999px; color:#075985; background:#edf7fc; font-weight:700; font-variant-numeric:tabular-nums; }
+  .achievable-chart-layout { display:grid; grid-template-columns:minmax(520px,1fr) minmax(230px,300px); flex:1; min-height:430px; gap:16px; }
+  #achievableChart { display:block; width:100%; height:100%; min-height:430px; overflow:visible; }
+  .achievable-legend { align-self:start; overflow:auto; max-height:100%; margin-top:8px; padding:10px; border:1px solid #d5e1e9; border-radius:8px; background:#f8fbfd; }
+  .achievable-legend h3 { margin:0 0 8px; color:#334e5d; font-size:12px; }
+  .achievable-legend-row { display:grid; grid-template-columns:28px minmax(0,1fr); gap:8px; align-items:center; padding:5px 0; color:#435568; font-size:12px; }
+  .achievable-legend-line { width:28px; height:0; border-top:3px dashed currentColor; }
+  .achievable-legend-dot { justify-self:center; width:10px; height:10px; border-radius:50%; background:currentColor; box-shadow:0 0 0 2px #fff,0 0 0 3px currentColor; }
+  .achievable-chart-grid { stroke:#dce4ea; stroke-width:1; vector-effect:non-scaling-stroke; }
+  .achievable-chart-axis { stroke:#667789; stroke-width:1.2; vector-effect:non-scaling-stroke; }
+  .achievable-chart-tick { fill:#526274; font-size:12px; }
+  .achievable-chart-label { fill:#26384a; font-size:14px; font-weight:700; }
+  .achievable-hrw-line { fill:none; stroke-width:2.5; stroke-dasharray:9 7; stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+  .achievable-project-point { stroke:#fff; stroke-width:1.5; vector-effect:non-scaling-stroke; transition:opacity .12s; }
+  .achievable-project-point:hover { opacity:1!important; stroke:#172234; stroke-width:2.5; }
+  .achievable-empty { fill:#5e6c7d; font-size:14px; text-anchor:middle; }
   .connection-state { display:flex; align-items:center; gap:7px; margin:7px 0; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; }
   .connection-dot { width:10px; height:10px; flex:0 0 auto; border-radius:50%; background:#8793a0; box-shadow:0 0 0 3px #8793a022; }
   .connection-state.connected .connection-dot { background:#0b7a53; box-shadow:0 0 0 3px #0b7a5322; }
@@ -173,11 +216,14 @@
   body[data-workspace="wave-transformation"] .app.visuals-active #localWaveModelPanel .panel-body { display:flex; flex-direction:column; }
   body[data-workspace="wave-transformation"] .app.visuals-active #swashAnimationPlayer { order:-1; position:sticky; top:54px; z-index:3; margin:0 0 10px; }
   body[data-workspace="wave-transformation"] .viewport-toolbar #toggleSidebar { display:none; }
+  body[data-workspace="wave-transformation"] .wave-view-selector,
+  body[data-workspace="wave-transformation"] .achievable-controls { display:none!important; }
   @media (max-width:800px) {
     .app { grid-template-columns:1fr; }
     .sidebar { position:absolute; inset:0 auto 0 0; width:min(330px,90vw); transform:translateX(-101%); transition:transform .2s; }
     .app.sidebar-open .sidebar { transform:translateX(0); }
     .sidebar-toggle { display:inline-block; }
+    #achievableChartView { padding:10px; }
   }
 </style>
 </head>
@@ -233,10 +279,28 @@
 
     <details id="waveConditionsPanel" class="section panel">
       <summary>Wave conditions</summary><div class="panel-body">
-        <p>Wave conditions are managed in Project Setup and update here automatically.</p>
-        <div class="file-name" id="waveFileName"></div><p id="waveSummary"></p>
-        <label class="wave-select-all"><input id="selectAllWaveConditions" type="checkbox"><strong>Select all conditions</strong><small id="selectedWaveCount">0 selected</small></label>
-        <div class="wave-list" id="waveConditionList"></div>
+        <div class="wave-view-selector" role="group" aria-label="Wave condition view">
+          <button id="showWaveCadView" class="active" type="button" aria-pressed="true">View conditions in CAD drawing</button>
+          <button id="showAchievableView" type="button" aria-pressed="false">Achievable wave conditions</button>
+        </div>
+        <div id="waveCadControls">
+          <p>Wave conditions are managed in Project Setup and update here automatically.</p>
+          <div class="file-name" id="waveFileName"></div><p id="waveSummary"></p>
+          <label class="wave-select-all"><input id="selectAllWaveConditions" type="checkbox"><strong>Select all conditions</strong><small id="selectedWaveCount">0 selected</small></label>
+          <div class="wave-list" id="waveConditionList"></div>
+        </div>
+        <div id="achievableControls" class="achievable-controls" hidden>
+          <p>Compare the 2026 HR Wallingford achieved-height limits with Froude-scaled project conditions. These scales are independent of Project Setup and CAD placement.</p>
+          <div class="achievable-scale-grid">
+            <div class="field focus-scale"><label for="achievableFocusScale">Highlighted scale</label><div class="scale-control"><span>Scale 1</span><span>:</span><input id="achievableFocusScale" type="number" min="1" max="500" step="1" value="25"></div></div>
+            <div class="field"><label for="achievableScaleMin">Minimum scale</label><input id="achievableScaleMin" type="number" min="1" max="500" step="1" value="10"></div>
+            <div class="field"><label for="achievableScaleMax">Maximum scale</label><input id="achievableScaleMax" type="number" min="1" max="500" step="1" value="40"></div>
+          </div>
+          <h3>HR Wallingford Specs 2026</h3>
+          <div id="hrwSpecLayerList" class="achievable-layer-list"></div>
+          <div class="row"><h3 class="grow">Project wave conditions</h3><button id="selectAllAchievableConditions" type="button">Select all</button><button id="clearAchievableConditions" type="button">Clear</button></div>
+          <div id="achievableConditionList" class="achievable-layer-list"></div>
+        </div>
       </div>
     </details>
 
@@ -320,6 +384,12 @@
 
   <main class="viewer" id="viewer">
     <div class="viewport-toolbar"><button id="toggleSidebar" class="sidebar-toggle">Controls</button><button id="resetView">Zoom to fit</button></div>
+    <section id="achievableChartView" aria-label="Achievable wave conditions graph">
+      <div class="achievable-chart-card">
+        <header class="achievable-chart-header"><div><h2>Achievable wave conditions</h2><p>Model-scale comparison using HR Wallingford Specs 2026 and the active project conditions.</p></div><div id="achievableFocusBadge" class="achievable-focus-badge">Scale 1:25 highlighted</div></header>
+        <div class="achievable-chart-layout"><svg id="achievableChart" role="img" aria-label="Peak period versus significant wave height"></svg><aside id="achievableLegend" class="achievable-legend" aria-label="Graph legend"></aside></div>
+      </div>
+    </section>
     <div class="placement-message" id="placementMessage">Click the CAD drawing to place the bathymetry reference point</div>
     <svg id="drawing" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-label="Wave flume CAD drawing">
       <rect id="canvasBackground" fill="#ffffff"></rect>
@@ -358,6 +428,8 @@
   </main>
 </div>
 
+<script id="hrwSpecs2026Data" type="application/json" data-source-workbook="0.9_m_flume_achievable.xlsx" data-source-sheet="HR Wallingford Specs 2026">{"source":"0.9_m_flume_achievable.xlsx","sheet":"HR Wallingford Specs 2026","periods":[0.8,0.884,0.968,1.052,1.136,1.22,1.304,1.388,1.472,1.556,1.64,1.724,1.808,1.892,1.976,2.06,2.144,2.228,2.312,2.396,2.48,2.564,2.648,2.732,2.816,2.9,2.984,3.068,3.152,3.236,3.32,3.404,3.488,3.572,3.656,3.74,3.824,3.908,3.992,4.076,4.16,4.244,4.328,4.412,4.496,4.58,4.664,4.748,4.832,4.916,5],"series":[{"depth":"0.5 m","values":[73.724671,88.714198,103.52931,117.448749,130.052629,141.20447,150.947565,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,156,154.495291,151.107511,147.867597,144.765946,141.793777,138.943044,136.206361,133.576934,131.048505,128.615297,126.271969,124.013577,121.835535,119.733586]},{"depth":"0.6 m","values":[74.105088,89.946834,106.383771,122.647859,138.06623,152.216435,164.925878,176.195817,186.122928,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,187.2,186.918715,182.367121,178.036752,173.911609,169.977214,166.220432,162.629321,159.192996,155.901516,152.745782,149.717448,146.808847,144.01292,141.32316,138.733554,136.238542,133.832969,131.512053]},{"depth":"0.7 m","values":[74.217395,90.409222,107.699186,125.478504,143.02977,159.733907,175.189804,189.215552,201.789394,212.984551,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,218.4,213.728037,208.189368,202.937811,197.95124,193.209762,188.695445,184.39208,180.28498,176.360802,172.6074,169.013689,165.569533,162.265647,159.093504,156.045265,153.113705,150.292156,147.574454,144.954893,142.42818]},{"depth":"0.8 m","values":[74.251087,90.579429,108.281916,126.950343,145.973588,164.67985,182.504827,199.079962,214.229658,227.922548,240.216939,249.6,249.6,249.6,249.6,249.6,249.6,249.6,249.6,249.6,249.6,249.6,248.650152,246.473067,244.504243,242.722561,241.109506,239.638984,238.288,237.05475,235.919659,229.77191,223.760407,218.064016,212.658198,207.520908,202.632296,197.974432,193.531086,189.287527,185.230356,181.347357,177.62737,174.060176,170.636403,167.347438,164.185351,161.142828,158.213113,155.389955,152.667561]},{"depth":"0.9 m","values":[74.261571,90.64238,108.535564,127.692627,147.66029,167.829445,187.57344,206.382509,223.925594,240.042109,254.699833,267.948702,279.883893,273.507266,266.052522,259.634588,254.066016,249.225423,244.975011,241.236473,237.940704,234.988478,232.368302,230.009666,227.885864,225.962229,224.22998,222.639362,221.197408,219.870787,218.65875,217.541953,216.503133,215.553441,214.668361,213.851111,213.088167,210.886266,206.117619,201.565343,197.214794,193.052631,189.066674,185.245782,181.579741,178.059172,174.675445,171.420609,168.287321,165.268792,162.358735]},{"depth":"1.0 m","values":[74.265,90.666104,108.645771,128.060848,148.60317,169.781971,190.997922,211.671119,231.345523,249.729185,266.681016,282.173351,272.364631,262.90178,254.804013,247.832817,241.815931,236.577513,231.991616,227.975625,224.426965,221.269573,218.463119,215.946352,213.677946,211.633434,209.779685,208.098624,206.56344,205.160874,203.879142,202.697842,201.608406,200.603174,199.675283,198.809639,198.01006,197.263002,196.564504,195.910983,195.307149,194.733961,194.196869,193.693424,192.026642,188.281823,184.683634,181.223487,177.893459,174.686226,171.595012]},{"depth":"1.1 m","values":[74.266191,90.675295,108.694064,128.242502,149.122218,170.967947,193.262515,215.425414,236.925534,257.359208,276.473301,275.946542,264.195414,254.079277,245.372246,237.889544,231.424675,225.818335,220.923335,216.638598,212.857818,209.501519,206.52729,203.856708,201.460025,199.310718,197.360932,195.592005,193.975938,192.498964,191.148812,189.91453,188.776164,187.715849,186.746498,185.842112,185.006778,184.226279,183.505254,182.822242,182.191205,181.592122,181.038788,180.51242,180.018882,179.556036,179.12192,178.707462,178.318547,177.946627,177.597539]},{"depth":"1.2 m","values":[74.266634,90.678981,108.715548,128.332319,149.405799,171.678234,194.734627,218.044459,241.054846,263.285034,283.591387,269.731179,257.384471,246.677369,237.443603,229.477757,222.603185,216.644033,211.452246,206.908161,202.918892,199.369954,196.233906,193.428226,190.90767,188.645234,186.603963,184.751102,183.057594,181.520869,180.115943,178.82054,177.636112,176.543137,175.524093,174.592837,173.723338,172.910868,172.160339,171.458269,170.801167,170.185859,169.609456,169.069321,168.554967,168.0805,167.627893,167.203346,166.797659,166.416993,166.052657]}]}</script>
+
 <script>
 "use strict";
 const CAD_LAYERS = [{"index":0,"id":"cad-layer-0","name":"0","visible":false,"off":true,"frozen":false,"locked":false,"colour":"#ffffff","linetype":"Continuous","lineweight":-3,"entities":{},"entityCount":0},{"index":1,"id":"cad-layer-1","name":"Flume","visible":true,"off":false,"frozen":false,"locked":false,"colour":"#260000","linetype":"Continuous","lineweight":-3,"entities":{"HATCH":6,"LINE":19,"MTEXT":1},"entityCount":26},{"index":2,"id":"cad-layer-2","name":"Paddle","visible":true,"off":false,"frozen":false,"locked":false,"colour":"#7f3f3f","linetype":"Continuous","lineweight":-3,"entities":{"HATCH":1,"LINE":26},"entityCount":27},{"index":3,"id":"cad-layer-3","name":"Defpoints","visible":false,"off":true,"frozen":false,"locked":false,"colour":"#ffffff","linetype":"Continuous","lineweight":-3,"entities":{},"entityCount":0},{"index":4,"id":"cad-layer-4","name":"Flume - measurements","visible":false,"off":false,"frozen":false,"locked":false,"colour":"#ff0000","linetype":"Continuous","lineweight":-3,"entities":{"DIMENSION":4,"LINE":1},"entityCount":5},{"index":5,"id":"cad-layer-5","name":"Bolt holes","visible":false,"off":false,"frozen":false,"locked":false,"colour":"#260000","linetype":"Continuous","lineweight":-3,"entities":{"CIRCLE":157,"HATCH":157},"entityCount":314},{"index":6,"id":"cad-layer-6","name":"Bolt hole - measurements","visible":false,"off":false,"frozen":false,"locked":false,"colour":"#260000","linetype":"Continuous","lineweight":-3,"entities":{"DIMENSION":33,"LINE":12,"MTEXT":1},"entityCount":46},{"index":7,"id":"cad-layer-7","name":"Flume glass","visible":true,"off":false,"frozen":false,"locked":false,"colour":"#999999","linetype":"Continuous","lineweight":-3,"entities":{"LINE":103,"LWPOLYLINE":40},"entityCount":143},{"index":8,"id":"cad-layer-8","name":"Beach","visible":true,"off":false,"frozen":false,"locked":false,"colour":"#260000","linetype":"Continuous","lineweight":-3,"entities":{"HATCH":2,"LINE":12},"entityCount":14}];
@@ -366,6 +438,9 @@ const DEFAULT_BATHY = [{"chainage":0.0,"elevation":0.4,"sourceRow":2},{"chainage
 const DEFAULT_FILE = "idealised_flume_bathy.csv";
 const DEFAULT_WAVE_CONDITIONS = [{"conditionId":"1","ari":"1","waterLevel":0.67,"statsDepth":-15.0,"waveHeight":4.2,"period":11.2,"sourceRow":2},{"conditionId":"2","ari":"10","waterLevel":1.34,"statsDepth":-15.0,"waveHeight":5.6,"period":12.5,"sourceRow":3},{"conditionId":"3","ari":"100","waterLevel":1.46,"statsDepth":-15.0,"waveHeight":6.8,"period":13.5,"sourceRow":4},{"conditionId":"4","ari":"600","waterLevel":1.58,"statsDepth":-15.0,"waveHeight":6.9,"period":14.2,"sourceRow":5},{"conditionId":"5","ari":"1","waterLevel":1.2,"statsDepth":-15.0,"waveHeight":4.2,"period":11.2,"sourceRow":6},{"conditionId":"6","ari":"10","waterLevel":1.87,"statsDepth":-15.0,"waveHeight":5.6,"period":12.5,"sourceRow":7},{"conditionId":"7","ari":"100","waterLevel":1.99,"statsDepth":-15.0,"waveHeight":6.8,"period":13.5,"sourceRow":8},{"conditionId":"8","ari":"600","waterLevel":2.11,"statsDepth":-15.0,"waveHeight":6.9,"period":14.2,"sourceRow":9}];
 const DEFAULT_WAVE_FILE = "wave_conditions.csv";
+const HRW_SPECS_2026 = JSON.parse(document.getElementById("hrwSpecs2026Data").textContent);
+const HRW_SPEC_COLOURS = ["#005daa","#2b7abd","#70a5d7","#0f766e","#7c3aed","#b45309","#be123c","#475569"];
+const DEFAULT_HRW_DEPTHS = ["0.6 m","0.9 m"];
 const FLUME_FLOOR_Y = 1701.56;
 const PADDLE_FACE_X = 6871.70;
 const FLUME_WATER_X_MIN = 4034.61;
@@ -380,7 +455,7 @@ let workspaceMode="standalone";
 function applyWorkspaceMode(mode){
   workspaceMode=mode==="wave-transformation"?"wave-transformation":mode==="model-design"?"model-design":"standalone";
   document.body.dataset.workspace=workspaceMode;
-  if(workspaceMode==="wave-transformation"){$("localWaveModelPanel").open=true;$("waveConditionsPanel").open=true;}
+  if(workspaceMode==="wave-transformation"){$("localWaveModelPanel").open=true;$("waveConditionsPanel").open=true;setWaveConditionsView("cad");}
   if(workspaceMode==="model-design"){document.querySelectorAll("details.panel").forEach(panel=>{panel.open=false;});clearSwashAnimation();}
   requestAnimationFrame(()=>{refreshScreenSizedSymbols();applyView();});
 }
@@ -405,6 +480,12 @@ let selectedPoint = null;
 let waveConditions = DEFAULT_WAVE_CONDITIONS.map(item=>({...item}));
 let waveLoadedFilename = DEFAULT_WAVE_FILE;
 let activeWaveRows = new Set();
+let waveConditionsView = "cad";
+let achievableScaleMin = 10;
+let achievableScaleMax = 40;
+let achievableFocusScale = 25;
+let activeHrwDepths = new Set(DEFAULT_HRW_DEPTHS);
+let activeAchievableConditionIds = new Set();
 let activeFixedWaterLevels = new Set();
 let segmentTooltipPoint = null;
 let measureMode = false;
@@ -423,6 +504,7 @@ let swashAnimationHandle = null;
 let swashAnimationLastTick = null;
 let swashAnimationClockTime = 0;
 let latestModelResults = [];
+let achievableRenderFrame = null;
 const STRUCTURE_COLOURS=["#7c3aed","#0f766e","#b45309","#be123c","#2563eb","#4d7c0f"];
 let modelStructures=[];
 let structureSequence=0;
@@ -1461,6 +1543,121 @@ function renderWaveConditionList(){
   updateWaveSelectionControls();
   updateWaveConditionDepths();
   updateLocalModelControls();
+  renderAchievableLayerControls();
+  requestAchievableChartRender();
+}
+
+function setWaveConditionsView(nextView,showStatus=false){
+  waveConditionsView=workspaceMode==="wave-transformation"?"cad":nextView==="achievable"?"achievable":"cad";
+  document.body.dataset.waveView=waveConditionsView;
+  const showingChart=waveConditionsView==="achievable";
+  $("showWaveCadView").classList.toggle("active",!showingChart);$("showWaveCadView").setAttribute("aria-pressed",String(!showingChart));
+  $("showAchievableView").classList.toggle("active",showingChart);$("showAchievableView").setAttribute("aria-pressed",String(showingChart));
+  $("waveCadControls").hidden=showingChart;$("achievableControls").hidden=!showingChart;
+  if(showingChart){renderAchievableLayerControls();requestAchievableChartRender();}
+  if(showStatus)setStatus(showingChart?"Showing achievable wave conditions. Chart scales are independent of the project and CAD scales.":"Showing wave conditions in the CAD drawing.","success");
+}
+
+function normaliseAchievableScaleControls(){
+  const minInput=$("achievableScaleMin"),maxInput=$("achievableScaleMax"),focusInput=$("achievableFocusScale");
+  const min=Math.round(Number(minInput.value)),max=Math.round(Number(maxInput.value)),focus=Math.round(Number(focusInput.value));
+  const minValid=Number.isFinite(min)&&min>=1&&min<=500,maxValid=Number.isFinite(max)&&max>=1&&max<=500&&max>=min,focusValid=Number.isFinite(focus)&&focus>=1&&focus<=500;
+  minInput.classList.toggle("invalid",!minValid||!maxValid);maxInput.classList.toggle("invalid",!maxValid);focusInput.classList.toggle("invalid",!focusValid);
+  if(!minValid||!maxValid||!focusValid)return false;
+  achievableScaleMin=min;achievableScaleMax=max;achievableFocusScale=Math.max(min,Math.min(max,focus));
+  minInput.value=String(achievableScaleMin);maxInput.value=String(achievableScaleMax);focusInput.value=String(achievableFocusScale);
+  $("achievableFocusBadge").textContent=`Scale 1:${achievableFocusScale} highlighted`;
+  return true;
+}
+
+function renderAchievableLayerControls(){
+  const hrwFragment=document.createDocumentFragment();
+  HRW_SPECS_2026.series.forEach((series,index)=>{
+    const label=document.createElement("label");label.className="achievable-layer-item";
+    const check=document.createElement("input");check.type="checkbox";check.checked=activeHrwDepths.has(series.depth);
+    check.addEventListener("change",()=>{if(check.checked)activeHrwDepths.add(series.depth);else activeHrwDepths.delete(series.depth);requestAchievableChartRender();});
+    const swatch=document.createElement("span");swatch.className="achievable-line-swatch";swatch.style.color=HRW_SPEC_COLOURS[index%HRW_SPEC_COLOURS.length];
+    const copy=document.createElement("span"),title=document.createElement("strong"),details=document.createElement("small");copy.className="achievable-layer-copy";title.textContent=`${series.depth} depth`;details.textContent=`${series.values.length} period points`;copy.append(title,details);label.append(check,swatch,copy);hrwFragment.appendChild(label);
+  });
+  $("hrwSpecLayerList").replaceChildren(hrwFragment);
+
+  const conditionFragment=document.createDocumentFragment();
+  waveConditions.forEach((condition,index)=>{
+    const id=String(condition.conditionId),label=document.createElement("label");label.className="achievable-layer-item";
+    const check=document.createElement("input");check.type="checkbox";check.checked=activeAchievableConditionIds.has(id);
+    check.addEventListener("change",()=>{if(check.checked)activeAchievableConditionIds.add(id);else activeAchievableConditionIds.delete(id);requestAchievableChartRender();});
+    const swatch=document.createElement("span");swatch.className="achievable-dot-swatch";swatch.style.color=WAVE_COLOURS[index%WAVE_COLOURS.length];
+    const copy=document.createElement("span"),title=document.createElement("strong"),details=document.createElement("small");copy.className="achievable-layer-copy";title.textContent=`Condition ${id}`;details.textContent=`Prototype Hₛ ${fmt(condition.waveHeight,2)} m · Tₚ ${fmt(condition.period,2)} s`;copy.append(title,details);label.append(check,swatch,copy);conditionFragment.appendChild(label);
+  });
+  if(!waveConditions.length){const empty=document.createElement("p");empty.style.padding="2px 8px";empty.textContent="No project wave conditions.";conditionFragment.appendChild(empty);}
+  $("achievableConditionList").replaceChildren(conditionFragment);
+}
+
+function niceChartStep(span,targetTicks){
+  if(!(span>0))return 1;
+  const rough=span/Math.max(1,targetTicks),power=10**Math.floor(Math.log10(rough)),fraction=rough/power;
+  const nice=fraction<=1?1:fraction<=2?2:fraction<=2.5?2.5:fraction<=5?5:10;
+  return nice*power;
+}
+
+function chartTicks(min,max,step){
+  const values=[];for(let value=Math.ceil((min-1e-9)/step)*step;value<=max+step*1e-6;value+=step)values.push(Number(value.toFixed(10)));return values;
+}
+
+function chartTickText(value,step){
+  if(step<0.1)return value.toFixed(2);if(step<1)return value.toFixed(1);return String(Math.round(value));
+}
+
+function renderAchievableLegend(hrwSeries,projectSeries){
+  const legend=$("achievableLegend"),fragment=document.createDocumentFragment(),heading=document.createElement("h3");heading.textContent="Visible layers";fragment.appendChild(heading);
+  hrwSeries.forEach(item=>{const row=document.createElement("div");row.className="achievable-legend-row";const swatch=document.createElement("span");swatch.className="achievable-legend-line";swatch.style.color=item.colour;const text=document.createElement("span");text.textContent=`HRW Specs 2026 - ${item.series.depth} depth`;row.append(swatch,text);fragment.appendChild(row);});
+  projectSeries.forEach(item=>{const row=document.createElement("div");row.className="achievable-legend-row";const swatch=document.createElement("span");swatch.className="achievable-legend-dot";swatch.style.color=item.colour;const text=document.createElement("span");text.textContent=`Condition ${item.condition.conditionId}`;row.append(swatch,text);fragment.appendChild(row);});
+  if(!hrwSeries.length&&!projectSeries.length){const empty=document.createElement("p");empty.textContent="No layers selected.";fragment.appendChild(empty);}
+  legend.replaceChildren(fragment);
+}
+
+function requestAchievableChartRender(){
+  if(achievableRenderFrame!==null)cancelAnimationFrame(achievableRenderFrame);
+  achievableRenderFrame=requestAnimationFrame(()=>{achievableRenderFrame=null;renderAchievableChart();});
+}
+
+function renderAchievableChart(){
+  if(!normaliseAchievableScaleControls())return;
+  const chart=$("achievableChart"),bounds=chart.getBoundingClientRect(),width=Math.max(520,Math.round(bounds.width||820)),height=Math.max(430,Math.round(bounds.height||540));
+  chart.setAttribute("viewBox",`0 0 ${width} ${height}`);chart.replaceChildren();
+  const title=svgElement("title");title.textContent="Achievable wave conditions";const description=svgElement("desc");description.textContent=`Peak period in seconds versus significant wave height in millimetres. Scale 1:${achievableFocusScale} points are highlighted.`;chart.append(title,description);
+
+  const hrwSeries=HRW_SPECS_2026.series.map((series,index)=>({series,index,colour:HRW_SPEC_COLOURS[index%HRW_SPEC_COLOURS.length],points:HRW_SPECS_2026.periods.map((period,pointIndex)=>({x:Number(period),y:Number(series.values[pointIndex])})).filter(point=>Number.isFinite(point.x)&&Number.isFinite(point.y))})).filter(item=>activeHrwDepths.has(item.series.depth));
+  const scales=[];for(let scale=achievableScaleMin;scale<=achievableScaleMax;scale++)scales.push(scale);
+  const projectSeries=waveConditions.map((condition,index)=>({condition,index,colour:WAVE_COLOURS[index%WAVE_COLOURS.length],points:scales.map(scale=>({scale,x:condition.period/Math.sqrt(scale),y:condition.waveHeight*1000/scale}))})).filter(item=>activeAchievableConditionIds.has(String(item.condition.conditionId)));
+  const allPoints=[...hrwSeries.flatMap(item=>item.points),...projectSeries.flatMap(item=>item.points)].filter(point=>Number.isFinite(point.x)&&Number.isFinite(point.y));
+  renderAchievableLegend(hrwSeries,projectSeries);
+
+  const rawXMin=allPoints.length?Math.min(...allPoints.map(point=>point.x)):0.5,rawXMax=allPoints.length?Math.max(...allPoints.map(point=>point.x)):5;
+  const rawYMax=allPoints.length?Math.max(...allPoints.map(point=>point.y)):350,xPad=Math.max(0.05,(rawXMax-rawXMin)*0.05),xStep=niceChartStep(rawXMax-rawXMin+2*xPad,9);
+  const xMin=Math.max(0,Math.floor((rawXMin-xPad)/xStep)*xStep),xMax=Math.max(xMin+xStep,Math.ceil((rawXMax+xPad)/xStep)*xStep),yStep=niceChartStep(rawYMax*1.08,7),yMin=0,yMax=Math.max(yStep,Math.ceil(rawYMax*1.08/yStep)*yStep);
+  const margin={left:72,right:24,top:24,bottom:62},plotWidth=Math.max(1,width-margin.left-margin.right),plotHeight=Math.max(1,height-margin.top-margin.bottom);
+  const xPosition=value=>margin.left+(value-xMin)/(xMax-xMin)*plotWidth,yPosition=value=>margin.top+(yMax-value)/(yMax-yMin)*plotHeight;
+
+  const defs=svgElement("defs"),clip=svgElement("clipPath",{id:"achievablePlotClip"}),clipRect=svgElement("rect",{x:margin.left,y:margin.top,width:plotWidth,height:plotHeight});clip.appendChild(clipRect);defs.appendChild(clip);chart.appendChild(defs);
+  for(const value of chartTicks(xMin,xMax,xStep)){
+    const x=xPosition(value);chart.appendChild(svgElement("line",{class:"achievable-chart-grid",x1:x,y1:margin.top,x2:x,y2:margin.top+plotHeight}));
+    const text=svgElement("text",{class:"achievable-chart-tick",x,y:margin.top+plotHeight+22,"text-anchor":"middle"});text.textContent=chartTickText(value,xStep);chart.appendChild(text);
+  }
+  for(const value of chartTicks(yMin,yMax,yStep)){
+    const y=yPosition(value);chart.appendChild(svgElement("line",{class:"achievable-chart-grid",x1:margin.left,y1:y,x2:margin.left+plotWidth,y2:y}));
+    const text=svgElement("text",{class:"achievable-chart-tick",x:margin.left-12,y:y+4,"text-anchor":"end"});text.textContent=chartTickText(value,yStep);chart.appendChild(text);
+  }
+  chart.appendChild(svgElement("line",{class:"achievable-chart-axis",x1:margin.left,y1:margin.top+plotHeight,x2:margin.left+plotWidth,y2:margin.top+plotHeight}));
+  chart.appendChild(svgElement("line",{class:"achievable-chart-axis",x1:margin.left,y1:margin.top,x2:margin.left,y2:margin.top+plotHeight}));
+  const xLabel=svgElement("text",{class:"achievable-chart-label",x:margin.left+plotWidth/2,y:height-14,"text-anchor":"middle"});xLabel.textContent="Tₚ (s)";chart.appendChild(xLabel);
+  const yLabel=svgElement("text",{class:"achievable-chart-label",x:18,y:margin.top+plotHeight/2,"text-anchor":"middle",transform:`rotate(-90 18 ${margin.top+plotHeight/2})`});yLabel.textContent="Hₛ (mm)";chart.appendChild(yLabel);
+
+  const plotGroup=svgElement("g",{"clip-path":"url(#achievablePlotClip)"});
+  hrwSeries.forEach(item=>{const polyline=svgElement("polyline",{class:"achievable-hrw-line",points:item.points.map(point=>`${xPosition(point.x)},${yPosition(point.y)}`).join(" "),stroke:item.colour});const lineTitle=svgElement("title");lineTitle.textContent=`HRW Specs 2026 - ${item.series.depth} depth`;polyline.appendChild(lineTitle);plotGroup.appendChild(polyline);});
+  projectSeries.forEach(item=>item.points.forEach(point=>{const focused=point.scale===achievableFocusScale,circle=svgElement("circle",{class:"achievable-project-point",cx:xPosition(point.x),cy:yPosition(point.y),r:focused?6.5:3.8,fill:item.colour,opacity:focused?1:0.28});const pointTitle=svgElement("title");pointTitle.textContent=`Condition ${item.condition.conditionId} · scale 1:${point.scale} · Hₛ ${point.y.toFixed(1)} mm · Tₚ ${point.x.toFixed(3)} s`;circle.appendChild(pointTitle);plotGroup.appendChild(circle);}));
+  chart.appendChild(plotGroup);
+  if(!allPoints.length){const empty=svgElement("text",{class:"achievable-empty",x:margin.left+plotWidth/2,y:margin.top+plotHeight/2});empty.textContent="Select one or more layers to plot.";chart.appendChild(empty);}
 }
 
 function updateWaveConditionDepths(){
@@ -1477,7 +1674,7 @@ function loadWaveCsvFile(file){
   const reader=new FileReader();
   reader.onerror=()=>setStatus(`Could not read ${file.name}. Existing wave conditions are unchanged.`,"error");
   reader.onload=()=>{try{
-    const result=parseWaveConditionsCSV(String(reader.result));waveConditions=result.conditions;waveLoadedFilename=file.name;activeWaveRows.clear();renderWaveConditionList();redrawWaveConditions();
+    const result=parseWaveConditionsCSV(String(reader.result));waveConditions=result.conditions;waveLoadedFilename=file.name;activeWaveRows.clear();activeAchievableConditionIds.clear();renderWaveConditionList();redrawWaveConditions();
     const warning=result.invalid.length?` Ignored invalid row(s): ${result.invalid.join(", ")}.`:"";
     setStatus(`Loaded ${waveConditions.length} wave conditions from ${file.name}.${warning}`,result.invalid.length?"":"success");
   }catch(error){setStatus(`${error.message} Existing wave conditions are unchanged.`,"error");}};
@@ -1592,6 +1789,7 @@ function createProjectState() {
     },
     fixedWaterLevels:{enabledDepths:[...activeFixedWaterLevels].sort((a,b)=>a-b)},
     waveConditions:{filename:waveLoadedFilename,conditions:waveConditions.map(item=>({...item})),enabledIndices:[...activeWaveRows].sort((a,b)=>a-b)},
+    achievableWaveConditions:{view:waveConditionsView,scaleMin:achievableScaleMin,scaleMax:achievableScaleMax,focusScale:achievableFocusScale,enabledHrwDepths:[...activeHrwDepths],enabledConditionIds:[...activeAchievableConditionIds]},
     localModel:{
       engine:$("modelEngine").value,
       toeChainage:Number($("seawallToeChainage").value),
@@ -1655,6 +1853,15 @@ function parseProjectState(text) {
   });
   const enabledIndices=Array.isArray(rawWaves.enabledIndices)?[...new Set(rawWaves.enabledIndices.map(Number).filter(index=>Number.isInteger(index)&&index>=0&&index<conditions.length))]:[];
 
+  const rawAchievable=data.achievableWaveConditions&&typeof data.achievableWaveConditions==="object"&&!Array.isArray(data.achievableWaveConditions)?data.achievableWaveConditions:{};
+  const achievableMin=projectNumber(rawAchievable.scaleMin??10,"Achievable chart minimum scale",value=>Number.isInteger(value)&&value>=1&&value<=500);
+  const achievableMax=projectNumber(rawAchievable.scaleMax??40,"Achievable chart maximum scale",value=>Number.isInteger(value)&&value>=achievableMin&&value<=500);
+  const requestedFocus=projectNumber(rawAchievable.focusScale??25,"Achievable chart highlighted scale",value=>Number.isInteger(value)&&value>=1&&value<=500);
+  const validHrwDepths=new Set(HRW_SPECS_2026.series.map(series=>series.depth)),validConditionIds=new Set(conditions.map(condition=>condition.conditionId));
+  const enabledHrwDepths=Array.isArray(rawAchievable.enabledHrwDepths)?[...new Set(rawAchievable.enabledHrwDepths.map(String).filter(depth=>validHrwDepths.has(depth)))]:[...DEFAULT_HRW_DEPTHS];
+  const enabledConditionIds=Array.isArray(rawAchievable.enabledConditionIds)?[...new Set(rawAchievable.enabledConditionIds.map(String).filter(id=>validConditionIds.has(id)))]:[];
+  const achievable={view:rawAchievable.view==="achievable"?"achievable":"cad",scaleMin:achievableMin,scaleMax:achievableMax,focusScale:Math.max(achievableMin,Math.min(achievableMax,requestedFocus)),enabledHrwDepths,enabledConditionIds};
+
   const display=data.display&&typeof data.display==="object"&&!Array.isArray(data.display)?data.display:{};
   const colour=typeof display.bathymetryColour==="string"&&/^#[0-9a-f]{6}$/i.test(display.bathymetryColour)?display.bathymetryColour:"#e6532f";
   const lineWidth=projectNumber(display.bathymetryLineWidth??3,"Bathymetry line width",value=>value>=0.5&&value<=12);
@@ -1676,7 +1883,7 @@ function parseProjectState(text) {
     bathymetry:{filename:String(bathymetry.filename||"project bathymetry"),points},modelStructures:structures,
     placement:{scaleDenominator:importedScale,anchor:importedAnchor},
     display:{bathymetryVisible:display.bathymetryVisible!==false,pointMarkers:display.pointMarkers!==false,bathymetryColour:colour,bathymetryLineWidth:lineWidth,cadLineWidth,batterEnabled:display.batterEnabled===true,rightExtensionEnabled:display.rightExtensionEnabled===true,rightExtensionDistance:importedRightExtensionDistance},
-    fixedWaterLevels:{enabledDepths},waveConditions:{filename:String(rawWaves.filename||"project wave conditions"),conditions,enabledIndices},localModel,cadLayers,view:importedView
+    fixedWaterLevels:{enabledDepths},waveConditions:{filename:String(rawWaves.filename||"project wave conditions"),conditions,enabledIndices},achievableWaveConditions:achievable,localModel,cadLayers,view:importedView
   };
 }
 
@@ -1686,18 +1893,20 @@ function applyProjectState(project,fileName) {
   modelStructures=(project.modelStructures||[]).map(item=>({...item,points:item.points.map(point=>({...point}))}));
   waveConditions=project.waveConditions.conditions.map(item=>({...item}));waveLoadedFilename=project.waveConditions.filename;
   activeWaveRows=new Set(project.waveConditions.enabledIndices);activeFixedWaterLevels=new Set(project.fixedWaterLevels.enabledDepths);
+  const achievable=project.achievableWaveConditions;waveConditionsView=achievable.view;achievableScaleMin=achievable.scaleMin;achievableScaleMax=achievable.scaleMax;achievableFocusScale=achievable.focusScale;activeHrwDepths=new Set(achievable.enabledHrwDepths);activeAchievableConditionIds=new Set(achievable.enabledConditionIds);
   scaleDenominator=project.placement.scaleDenominator;anchor=project.placement.anchor?{...project.placement.anchor}:null;batterEnabled=project.display.batterEnabled;rightExtensionEnabled=project.display.rightExtensionEnabled;rightExtensionDistance=project.display.rightExtensionDistance;
   $("scaleInput").value=String(scaleDenominator);$("scaleInput").classList.remove("invalid");
   $("anchorX").value=anchor?anchor.x.toFixed(3):"";$("anchorY").value=anchor?anchor.y.toFixed(3):"";
   $("bathyVisible").checked=project.display.bathymetryVisible;$("showMarkers").checked=project.display.pointMarkers;
   $("lineColour").value=project.display.bathymetryColour;$("lineWidth").value=String(project.display.bathymetryLineWidth);$("cadLineWidth").value=String(project.display.cadLineWidth);
   $("rightExtensionDistance").value=rightExtensionDistance>0?String(rightExtensionDistance):"";$("rightExtensionDistance").classList.remove("invalid");
+  $("achievableScaleMin").value=String(achievableScaleMin);$("achievableScaleMax").value=String(achievableScaleMax);$("achievableFocusScale").value=String(achievableFocusScale);
   document.documentElement.style.setProperty("--cad-stroke-width",`${project.display.cadLineWidth}px`);
   $("modelEngine").value=project.localModel.engine;$("seawallToeChainage").value=String(project.localModel.toeChainage);$("swanGridSpacing").value=String(project.localModel.gridSpacing);$("swanBreakingCoefficient").value=String(project.localModel.swanBreakingCoefficient);$("swashAnalysisPeriods").value=String(project.localModel.swashAnalysisPeriods);$("swashAnimationPeriods").value=String(project.localModel.swashAnimationPeriods);$("swashAnimationTimeBasis").value=project.localModel.swashAnimationTimeBasis;$("xbeachAnalysisPeriods").value=String(project.localModel.xBeachAnalysisPeriods);
   const layersByName=new Map(project.cadLayers.map(item=>[item.name,item.visible]));
   document.querySelectorAll(".layer-item input[data-layer-id]").forEach(check=>{const layer=CAD_LAYERS.find(item=>item.id===check.dataset.layerId);if(layer&&layersByName.has(layer.name)){check.checked=layersByName.get(layer.name);$(layer.id).style.display=check.checked?"":"none";}});
   modelJobId=null;renderModelResults([]);$("modelJobStatus").textContent="";
-  renderTable();renderModelStructureList();renderFixedWaterLevelList();redrawFixedWaterLevels();renderWaveConditionList();updateBatterUI();updateRightExtensionUI();updatePlacementUI();redrawBathymetry();refreshModelEngineUI();
+  renderTable();renderModelStructureList();renderFixedWaterLevelList();redrawFixedWaterLevels();renderWaveConditionList();setWaveConditionsView(waveConditionsView);updateBatterUI();updateRightExtensionUI();updatePlacementUI();redrawBathymetry();refreshModelEngineUI();
   view=project.view?{...project.view}:{...fitView};applyView();
   const drawingWarning=project.sourceDrawing&&project.sourceDrawing!==CAD_META.sourceFile?` Warning: this project was saved against ${project.sourceDrawing}, while this viewer contains ${CAD_META.sourceFile}.`:"";
   setStatus(`Loaded Model Design ${fileName}: ${bathy.length} bathymetry points, ${modelStructures.length} model structures, ${waveConditions.length} wave conditions, scale 1:${scaleDenominator}.${drawingWarning}`,drawingWarning?"error":"success");
@@ -1895,6 +2104,11 @@ $("addModelStructure").addEventListener("click",addModelStructure);
 $("structureCsvFile").addEventListener("change",event=>{const file=event.target.files[0],structureId=pendingStructureCsvId;event.target.value="";pendingStructureCsvId=null;if(file&&structureId)loadStructureCsvFile(file,structureId);});
 $("reconnectModelService").addEventListener("click",checkModelService);
 $("runLocalModel").addEventListener("click",runLocalModel);
+$("showWaveCadView").addEventListener("click",()=>setWaveConditionsView("cad",true));
+$("showAchievableView").addEventListener("click",()=>setWaveConditionsView("achievable",true));
+for(const id of ["achievableFocusScale","achievableScaleMin","achievableScaleMax"]){$(id).addEventListener("change",()=>{if(normaliseAchievableScaleControls())requestAchievableChartRender();});}
+$("selectAllAchievableConditions").addEventListener("click",()=>{activeAchievableConditionIds=new Set(waveConditions.map(condition=>String(condition.conditionId)));renderAchievableLayerControls();requestAchievableChartRender();});
+$("clearAchievableConditions").addEventListener("click",()=>{activeAchievableConditionIds.clear();renderAchievableLayerControls();requestAchievableChartRender();});
 $("modelEngine").addEventListener("change",refreshModelEngineUI);
 $("swashAnimationPlay").addEventListener("click",toggleSwashAnimationPlayback);
 $("swashAnimationFrame").addEventListener("input",event=>{if(!swashAnimation)return;stopSwashAnimationPlayback();swashAnimationFrameIndex=Math.max(0,Math.min(swashAnimation.frameTimes.length-1,Number(event.target.value)||0));swashAnimationClockTime=swashAnimation.frameTimes[swashAnimationFrameIndex];renderSwashAnimationFrame();});
@@ -1927,11 +2141,11 @@ $("exportProject").addEventListener("click",exportProjectJSON);
 $("resetView").addEventListener("click",resetView); $("exportCsv").addEventListener("click",exportModelCSV); $("exportSvg").addEventListener("click",exportCurrentSvg); $("exportDxf").addEventListener("click",exportBathymetryDXF);
 $("exportDxfInfo").addEventListener("click",()=>{const help=$("exportDxfHelp"),show=help.hidden;help.hidden=!show;$("exportDxfInfo").setAttribute("aria-expanded",String(show));});
 $("toggleSidebar").addEventListener("click",()=>$("app").classList.toggle("sidebar-open"));
-new ResizeObserver(refreshScreenSizedSymbols).observe(viewer);
+new ResizeObserver(()=>{refreshScreenSizedSymbols();if(waveConditionsView==="achievable")requestAchievableChartRender();}).observe(viewer);
 
 $("canvasBackground").setAttribute("x",metaView.x); $("canvasBackground").setAttribute("y",metaView.y); $("canvasBackground").setAttribute("width",metaView.width); $("canvasBackground").setAttribute("height",metaView.height);
 applyWorkspaceMode(new URLSearchParams(location.search).get("workspace"));
-initialiseLayers(); renderTable(); renderModelStructureList(); renderFixedWaterLevelList(); redrawFixedWaterLevels(); renderWaveConditionList(); resetView(); updatePlacementUI(); updateBatterUI(); updateRightExtensionUI(); updateMeasureUI(); renderMeasurement(); redrawBathymetry();
+initialiseLayers(); renderTable(); renderModelStructureList(); renderFixedWaterLevelList(); redrawFixedWaterLevels(); renderWaveConditionList(); setWaveConditionsView("cad"); resetView(); updatePlacementUI(); updateBatterUI(); updateRightExtensionUI(); updateMeasureUI(); renderMeasurement(); redrawBathymetry();
 flumeworksDefaultModelDesignState=createProjectState();
 if(window.parent!==window)window.parent.postMessage({type:"flumeworks:model-design-ready"},"*");
 setStatus(`Ready. ${CAD_META.entityCount || ""} CAD entities, embedded bathymetry, and ${waveConditions.length} wave conditions are available. Set chainage 0 to place the profile.`);

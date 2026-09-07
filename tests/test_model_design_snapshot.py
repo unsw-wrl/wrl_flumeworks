@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import json
+import re
 from pathlib import Path
 
 from flumeworks.model_design import wave_model_service
 
 
 EXPECTED_HASHES = {
-    "wave_flume_bathymetry_viewer.html": "bc3ab0b92a2c6c0074a89ab01bef7cf6f283318340e97ba5bd579279ebc90146",
+    "wave_flume_bathymetry_viewer.html": "e5ee8668884627ce9a0e82fdd2dde739bed505f285e8cd282dbe31fa82c65cc1",
     "wave_model_service.py": "86ccaf3c952d30b73f13016e2793d4cf6ea288ad830f5ea19fd571877cb05005",
 }
 
@@ -48,3 +50,45 @@ def test_swan_breaking_coefficient_is_validated_and_preserved() -> None:
     )
 
     assert model_case["options"]["swanBreakingCoefficient"] == 0.65
+
+
+def test_hrw_2026_achievable_wave_curves_are_embedded() -> None:
+    viewer = Path(wave_model_service.__file__).resolve().parent / "wave_flume_bathymetry_viewer.html"
+    html = viewer.read_text(encoding="utf-8")
+    match = re.search(
+        r'<script id="hrwSpecs2026Data"[^>]*>(.*?)</script>',
+        html,
+        flags=re.DOTALL,
+    )
+
+    assert match is not None
+    data = json.loads(match.group(1))
+    assert data["sheet"] == "HR Wallingford Specs 2026"
+    assert len(data["periods"]) == 51
+    assert data["periods"][0] == 0.8
+    assert data["periods"][-1] == 5
+    assert [series["depth"] for series in data["series"]] == [
+        "0.5 m",
+        "0.6 m",
+        "0.7 m",
+        "0.8 m",
+        "0.9 m",
+        "1.0 m",
+        "1.1 m",
+        "1.2 m",
+    ]
+    assert data["series"][1]["values"][0] == 74.105088
+    assert data["series"][4]["values"][12] == 279.883893
+
+
+def test_achievable_wave_chart_uses_independent_froude_scaling() -> None:
+    viewer = Path(wave_model_service.__file__).resolve().parent / "wave_flume_bathymetry_viewer.html"
+    html = viewer.read_text(encoding="utf-8")
+
+    assert 'const DEFAULT_HRW_DEPTHS = ["0.6 m","0.9 m"]' in html
+    assert 'let achievableScaleMin = 10' in html
+    assert 'let achievableScaleMax = 40' in html
+    assert 'let activeAchievableConditionIds = new Set()' in html
+    assert 'condition.period/Math.sqrt(scale)' in html
+    assert 'condition.waveHeight*1000/scale' in html
+    assert 'HRW Specs 2026 - ${item.series.depth} depth' in html
