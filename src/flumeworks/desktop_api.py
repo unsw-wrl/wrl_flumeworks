@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .app_state import ApplicationState
 from .project_store import PROJECT_EXTENSION, project_slug
@@ -10,12 +10,17 @@ from .project_store import PROJECT_EXTENSION, project_slug
 class DesktopApi:
     """Small native-dialog bridge exposed to the pywebview interface."""
 
-    def __init__(self, state: ApplicationState):
+    def __init__(
+        self,
+        state: ApplicationState,
+        request_restart: Callable[[str], None] | None = None,
+    ):
         # pywebview recursively walks every public attribute on its JS API object.
         # Keep implementation objects private so the native Window/WinForms tree is
         # never mistaken for an API namespace.
         self._state = state
         self._window: Any = None
+        self._request_restart = request_restart
 
     def _bind_window(self, window: Any) -> None:
         self._window = window
@@ -61,3 +66,10 @@ class DesktopApi:
             file_types=("FlumeWorks project (*.flumeworks)",),
         )
         return str(selected[0]) if selected else None
+
+    def refresh_application(self, project_path: str = "") -> bool:
+        """Restart the desktop app after JavaScript has saved the active project."""
+        if self._request_restart is None:
+            return False
+        self._request_restart(project_path)
+        return True

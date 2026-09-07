@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
@@ -120,6 +120,13 @@ def project_http_error(exc: ProjectError) -> HTTPException:
 def create_app(state: ApplicationState) -> FastAPI:
     app = FastAPI(title="WRL FlumeWorks", version="0.3.0", docs_url=None, redoc_url=None)
     app.mount("/assets", StaticFiles(directory=FRONTEND_ROOT / "assets"), name="assets")
+
+    @app.middleware("http")
+    async def prevent_local_interface_caching(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith("/assets/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/api/health")
     def health() -> dict[str, object]:

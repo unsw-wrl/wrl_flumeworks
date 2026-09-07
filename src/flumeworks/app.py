@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
+import threading
 import time
 import webbrowser
 from pathlib import Path
@@ -69,17 +71,44 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--project-root", type=Path, help="Folder containing FlumeWorks project directories")
     parser.add_argument("--config", type=Path, help="Local model executable configuration JSON")
     parser.add_argument("--port", type=int, default=0, help="Local application port; 0 selects a free port")
+    parser.add_argument("--open-project", type=Path, help=argparse.SUPPRESS)
     return parser.parse_args(argv)
 
 
+def restart_arguments(arguments: list[str], project_path: str) -> list[str]:
+    """Replace any prior internal reopen argument for a clean desktop restart."""
+    cleaned: list[str] = []
+    skip_next = False
+    for argument in arguments:
+        if skip_next:
+            skip_next = False
+            continue
+        if argument == "--open-project":
+            skip_next = True
+            continue
+        if argument.startswith("--open-project="):
+            continue
+        cleaned.append(argument)
+    if project_path:
+        cleaned.extend(("--open-project", project_path))
+    return cleaned
+
+
 def run(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
+    original_arguments = list(argv if argv is not None else sys.argv[1:])
+    args = parse_args(original_arguments)
     settings = load_settings(args.project_root, args.config)
     model_design = ModelDesignRuntime(settings.model_config)
     model_design.start()
     repository_root = Path(__file__).resolve().parents[2]
     state = ApplicationState(settings, model_design.url, repository_root)
+    if args.open_project:
+        try:
+            state.open_project(str(args.open_project))
+        except Exception as exc:
+            print(f"Warning: the refreshed project could not be reopened: {exc}", file=sys.stderr)
     application_server = ApplicationServer(create_app(state), port=args.port)
+    restart_request = {"requested": False, "project_path": ""}
     try:
         application_server.start()
         print(f"WRL FlumeWorks: {application_server.url}")
@@ -95,7 +124,12 @@ def run(argv: list[str] | None = None) -> int:
         else:
             import webview
 
-            desktop_api = DesktopApi(state)
+            def request_restart(project_path: str) -> None:
+                restart_request["requested"] = True
+                restart_request["project_path"] = project_path
+                threading.Timer(0.1, window.destroy).start()
+
+            desktop_api = DesktopApi(state, request_restart)
             window = webview.create_window(
                 "WRL FlumeWorks",
                 application_server.url,
@@ -116,6 +150,14 @@ def run(argv: list[str] | None = None) -> int:
             print(f"Warning: the active project could not be saved during shutdown: {exc}", file=sys.stderr)
         application_server.stop()
         model_design.stop()
+        if restart_request["requested"]:
+            arguments = restart_arguments(
+                original_arguments, str(restart_request["project_path"])
+            )
+            subprocess.Popen(
+                [sys.executable, "-m", "flumeworks.app", *arguments],
+                cwd=repository_root,
+            )
 
 
 def main() -> None:

@@ -24,10 +24,13 @@ class FakeWindow:
 
 
 def test_only_dialog_methods_are_exposed_to_pywebview(tmp_path: Path) -> None:
-    api = DesktopApi(FakeState(tmp_path))  # type: ignore[arg-type]
+    restart_requests: list[str] = []
+    api = DesktopApi(FakeState(tmp_path), restart_requests.append)  # type: ignore[arg-type]
     api._bind_window(FakeWindow(tmp_path / "selected project"))
 
     assert all(name.startswith("_") for name in vars(api))
     assert api.choose_new_project("WRL001", "Test") == str(
         tmp_path / "selected project.flumeworks"
     )
+    assert api.refresh_application(str(tmp_path / "open.flumeworks")) is True
+    assert restart_requests == [str(tmp_path / "open.flumeworks")]

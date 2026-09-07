@@ -153,8 +153,10 @@ def test_frontend_shell_is_served(tmp_path: Path) -> None:
     try:
         response = client.get("/")
         assert response.status_code == 200
+        assert response.headers["cache-control"] == "no-store"
         assert "WRL FlumeWorks" in response.text
         assert "Generate backup" in response.text
+        assert "Refresh application" in response.text
         assert "Project options" in response.text
         assert "Save project" in response.text
         assert "Last Saved: —" in response.text

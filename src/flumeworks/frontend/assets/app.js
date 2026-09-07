@@ -459,6 +459,30 @@ async function saveProject() {
   } catch (error) { setStatus(error.message, "error"); }
 }
 
+async function refreshApplication() {
+  if (conditionEditMode) { setStatus("Save or cancel the condition-table changes before refreshing.", "error"); return; }
+  if (projectEditMode) { setStatus("Save or cancel the project-detail changes before refreshing.", "error"); return; }
+  const button = $("refreshApplication"); button.disabled = true;
+  try {
+    if (bootstrap.currentProject) {
+      await persistModelDesign();
+      const payload = await api("/api/projects/save", {method: "POST"});
+      bootstrap.currentProject = payload.currentProject; bootstrap.recentProjects = payload.recentProjects;
+      renderProjects(); renderCurrentProject();
+    }
+    const projectPath = bootstrap.currentProject?.project?.database_path || "";
+    setProjectMenu(false); setStatus("Refreshing FlumeWorks from the latest local files…", "success");
+    if (window.pywebview?.api && typeof window.pywebview.api.refresh_application === "function") {
+      const restarting = await window.pywebview.api.refresh_application(projectPath);
+      if (restarting) return;
+    }
+    const target = new URL(window.location.href); target.searchParams.set("refresh", String(Date.now()));
+    window.location.replace(target.href);
+  } catch (error) {
+    button.disabled = false; setStatus(`FlumeWorks could not refresh: ${error.message}`, "error");
+  }
+}
+
 function parseCsvRows(text) {
   text = String(text).replace(/^\uFEFF/, ""); const rows = []; let row = [], field = "", quoted = false;
   for (let index = 0; index < text.length; index++) {
@@ -590,6 +614,7 @@ document.addEventListener("keydown", event => {
 });
 
 $("saveProject").addEventListener("click", saveProject);
+$("refreshApplication").addEventListener("click", refreshApplication);
 $("backupProject").addEventListener("click", async () => {
   if (conditionEditMode) { setStatus("Save or cancel the condition-table changes first.", "error"); return; }
   if (projectEditMode) { setStatus("Save or cancel the project-detail changes first.", "error"); return; }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from flumeworks.app import handle_desktop_close
+from flumeworks.app import handle_desktop_close, restart_arguments
 
 
 class FakeState:
@@ -55,3 +55,15 @@ def test_dirty_project_discards_when_user_chooses_no() -> None:
 
     assert result is None
     assert state.close_calls == [False]
+
+
+def test_restart_arguments_reopen_the_current_project_once() -> None:
+    assert restart_arguments(
+        ["--port", "8765", "--open-project", "old.flumeworks"],
+        r"C:\projects\current.flumeworks",
+    ) == [
+        "--port",
+        "8765",
+        "--open-project",
+        r"C:\projects\current.flumeworks",
+    ]
