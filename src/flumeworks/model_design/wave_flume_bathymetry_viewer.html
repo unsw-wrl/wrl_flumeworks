@@ -127,6 +127,7 @@
   .wave-view-selector button { min-height:48px; padding:7px 8px; text-align:left; line-height:1.25; }
   .wave-view-selector button.active { color:#fff; border-color:var(--accent); background:var(--accent); font-weight:700; }
   .achievable-controls { display:grid; gap:10px; }
+  .achievable-controls[hidden] { display:none; }
   .achievable-controls h3 { margin:1px 0 0; color:#334e5d; font-size:12px; }
   .achievable-scale-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .achievable-scale-grid .focus-scale { grid-column:1/-1; }
@@ -1611,7 +1612,7 @@ function chartTickText(value,step){
 function renderAchievableLegend(hrwSeries,projectSeries){
   const legend=$("achievableLegend"),fragment=document.createDocumentFragment(),heading=document.createElement("h3");heading.textContent="Visible layers";fragment.appendChild(heading);
   hrwSeries.forEach(item=>{const row=document.createElement("div");row.className="achievable-legend-row";const swatch=document.createElement("span");swatch.className="achievable-legend-line";swatch.style.color=item.colour;const text=document.createElement("span");text.textContent=`HRW Specs 2026 - ${item.series.depth} depth`;row.append(swatch,text);fragment.appendChild(row);});
-  projectSeries.forEach(item=>{const row=document.createElement("div");row.className="achievable-legend-row";const swatch=document.createElement("span");swatch.className="achievable-legend-dot";swatch.style.color=item.colour;const text=document.createElement("span");text.textContent=`Condition ${item.condition.conditionId}`;row.append(swatch,text);fragment.appendChild(row);});
+  projectSeries.forEach(item=>{const row=document.createElement("div");row.className="achievable-legend-row";const swatch=document.createElement("span");swatch.className="achievable-legend-dot";swatch.style.color=item.colour;const text=document.createElement("span"),depth=modelFlumeDepthForScale(item.condition,achievableFocusScale);text.textContent=depth===null?`Condition ${item.condition.conditionId} - depth unavailable (set chainage 0)`:`Condition ${item.condition.conditionId} - ${fmt(depth,1)} mm depth (scale ${achievableFocusScale})`;row.append(swatch,text);fragment.appendChild(row);});
   if(!hrwSeries.length&&!projectSeries.length){const empty=document.createElement("p");empty.textContent="No layers selected.";fragment.appendChild(empty);}
   legend.replaceChildren(fragment);
 }
@@ -1660,14 +1661,21 @@ function renderAchievableChart(){
   if(!allPoints.length){const empty=svgElement("text",{class:"achievable-empty",x:margin.left+plotWidth/2,y:margin.top+plotHeight/2});empty.textContent="Select one or more layers to plot.";chart.appendChild(empty);}
 }
 
+function modelFlumeDepthForScale(condition,modelScale){
+  if(!anchor||!bathy.length||!(scaleDenominator>0)||!(modelScale>0))return null;
+  const reference=referencePoint(),floorElevation=reference.elevation+(FLUME_FLOOR_Y-anchor.y)*scaleDenominator/1000;
+  const depth=(condition.waterLevel-floorElevation)*1000/modelScale;
+  return Number.isFinite(depth)?depth:null;
+}
+
 function updateWaveConditionDepths(){
-  const ready=Boolean(anchor&&bathy.length&&scaleDenominator>0),reference=ready?referencePoint():null;
+  const ready=Boolean(anchor&&bathy.length&&scaleDenominator>0);
   waveConditions.forEach((condition,index)=>{
     const element=$("wave-flume-depth-"+index);if(!element)return;
     if(!ready){element.textContent="Flume water depth: set chainage 0";return;}
-    const waterY=anchor.y+(condition.waterLevel-reference.elevation)*1000/scaleDenominator;
-    element.textContent=`Flume water depth: ${fmt(waterY-FLUME_FLOOR_Y,2)} mm`;
+    element.textContent=`Flume water depth: ${fmt(modelFlumeDepthForScale(condition,scaleDenominator),2)} mm`;
   });
+  if(waveConditionsView==="achievable")requestAchievableChartRender();
 }
 
 function loadWaveCsvFile(file){
@@ -2106,7 +2114,7 @@ $("reconnectModelService").addEventListener("click",checkModelService);
 $("runLocalModel").addEventListener("click",runLocalModel);
 $("showWaveCadView").addEventListener("click",()=>setWaveConditionsView("cad",true));
 $("showAchievableView").addEventListener("click",()=>setWaveConditionsView("achievable",true));
-for(const id of ["achievableFocusScale","achievableScaleMin","achievableScaleMax"]){$(id).addEventListener("change",()=>{if(normaliseAchievableScaleControls())requestAchievableChartRender();});}
+for(const id of ["achievableFocusScale","achievableScaleMin","achievableScaleMax"]){$(id).addEventListener("input",()=>{if(normaliseAchievableScaleControls())requestAchievableChartRender();});}
 $("selectAllAchievableConditions").addEventListener("click",()=>{activeAchievableConditionIds=new Set(waveConditions.map(condition=>String(condition.conditionId)));renderAchievableLayerControls();requestAchievableChartRender();});
 $("clearAchievableConditions").addEventListener("click",()=>{activeAchievableConditionIds.clear();renderAchievableLayerControls();requestAchievableChartRender();});
 $("modelEngine").addEventListener("change",refreshModelEngineUI);

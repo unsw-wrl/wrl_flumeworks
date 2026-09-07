@@ -9,7 +9,7 @@ from flumeworks.model_design import wave_model_service
 
 
 EXPECTED_HASHES = {
-    "wave_flume_bathymetry_viewer.html": "e5ee8668884627ce9a0e82fdd2dde739bed505f285e8cd282dbe31fa82c65cc1",
+    "wave_flume_bathymetry_viewer.html": "39f7583d30f378461f817ab61a360cff5280a2f0a347108c7a8895da30509444",
     "wave_model_service.py": "86ccaf3c952d30b73f13016e2793d4cf6ea288ad830f5ea19fd571877cb05005",
 }
 
@@ -92,3 +92,7 @@ def test_achievable_wave_chart_uses_independent_froude_scaling() -> None:
     assert 'condition.period/Math.sqrt(scale)' in html
     assert 'condition.waveHeight*1000/scale' in html
     assert 'HRW Specs 2026 - ${item.series.depth} depth' in html
+    assert '.achievable-controls[hidden] { display:none; }' in html
+    assert 'function modelFlumeDepthForScale(condition,modelScale)' in html
+    assert '(condition.waterLevel-floorElevation)*1000/modelScale' in html
+    assert '${fmt(depth,1)} mm depth (scale ${achievableFocusScale})' in html
