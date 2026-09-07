@@ -403,7 +403,12 @@ function loadModelDesignForCurrentProject(force = false) {
   const current = bootstrap.currentProject, identity = current && current.project ? current.project.uuid : "__none__";
   if (!force && loadedModelProject === identity) return;
   const state = current ? current.modelDesignState : null;
-  modelFrame().postMessage({type: "flumeworks:load-model-design", state, sharedWaveConditions: current ? sharedWaveConditions() : null, waveConditionsFilename: current?.project?.wave_conditions_filename || "FlumeWorks design conditions"}, modelOrigin());
+  const projectContext = current ? {
+    scaleDenominator: projectScale(),
+    facilityId: current.project.facility || "",
+    facilityName: current.project.facility_name || "",
+  } : null;
+  modelFrame().postMessage({type: "flumeworks:load-model-design", state, sharedWaveConditions: current ? sharedWaveConditions() : null, waveConditionsFilename: current?.project?.wave_conditions_filename || "FlumeWorks design conditions", projectContext, referenceBaseUrl: window.location.origin}, modelOrigin());
   loadedModelProject = identity; lastModelDesignSignature = modelDesignSignature(state);
 }
 
@@ -549,7 +554,7 @@ $("editProjectForm").addEventListener("submit", async event => {
   try {
     await persistModelDesign();
     const payload = await api("/api/projects/current", {method: "PUT", body: JSON.stringify(request)});
-    bootstrap.currentProject = payload.currentProject; bootstrap.recentProjects = payload.recentProjects; resetProjectEditing(); renderProjects(); renderCurrentProject();
+    bootstrap.currentProject = payload.currentProject; bootstrap.recentProjects = payload.recentProjects; resetProjectEditing(); renderProjects(); renderCurrentProject(); loadModelDesignForCurrentProject(true);
     setStatus(destination === originalPath ? "Project details updated. Save the project when ready." : `Project saved and switched to ${destination}. The original file remains unchanged.`, "success");
   } catch (error) { setStatus(error.message, "error"); }
 });

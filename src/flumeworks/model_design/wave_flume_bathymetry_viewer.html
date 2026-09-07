@@ -167,6 +167,50 @@
   .achievable-project-point { stroke:#fff; stroke-width:1.5; vector-effect:non-scaling-stroke; transition:opacity .12s; }
   .achievable-project-point:hover { opacity:1!important; stroke:#172234; stroke-width:2.5; }
   .achievable-empty { fill:#5e6c7d; font-size:14px; text-anchor:middle; }
+  .feasibility-panel-meta { margin:7px 0 10px; padding:8px 9px; border:1px solid #bfd5e3; border-radius:6px; color:#334e5d; background:#f4f9fc; font-size:12px; }
+  .feasibility-inputs { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:9px 0; }
+  #feasibilityView { position:absolute; inset:0; z-index:2; display:none; overflow:auto; padding:18px; background:#edf5fb; }
+  body[data-wave-view="feasibility"] #feasibilityView { display:block; }
+  body[data-wave-view="feasibility"] #drawing,
+  body[data-wave-view="feasibility"] #achievableChartView,
+  body[data-wave-view="feasibility"] .coords,
+  body[data-wave-view="feasibility"] .placement-message,
+  body[data-wave-view="feasibility"] .tooltip,
+  body[data-wave-view="feasibility"] .measure-popup,
+  body[data-wave-view="feasibility"] #resetView { display:none!important; }
+  .feasibility-card { min-width:700px; min-height:calc(100% - 2px); padding:18px; border:1px solid #c7d8e5; border-radius:10px; background:#fff; box-shadow:0 8px 28px #173f5f12; }
+  .feasibility-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
+  .feasibility-header h2 { margin:0; color:#004f91; font-size:20px; }
+  .feasibility-header p { max-width:760px; margin:4px 0 0; color:var(--muted); font-size:12px; }
+  .feasibility-summary { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
+  .feasibility-summary span { padding:6px 10px; border:1px solid #cbdbe5; border-radius:999px; color:#334e5d; background:#f7fafc; font-size:12px; font-weight:700; }
+  .feasibility-condition { margin-top:16px; padding-top:15px; border-top:1px solid #d8e3ea; }
+  .feasibility-condition:first-of-type { margin-top:0; padding-top:0; border-top:0; }
+  .feasibility-condition-header { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:9px; }
+  .feasibility-condition-header h3 { margin:0; color:#173f5f; font-size:16px; }
+  .feasibility-condition-header small { color:var(--muted); }
+  .feasibility-checks { display:grid; grid-template-columns:repeat(3,minmax(220px,1fr)); gap:10px; }
+  .feasibility-check { min-height:94px; padding:11px 12px; border:1px solid #c7d8e5; border-left:4px solid #64748b; border-radius:8px; background:#f8fafc; }
+  .feasibility-check.ok { border-left-color:#0b8a5a; background:#e3f4ed; }
+  .feasibility-check.marginal { border-left-color:#c57a08; background:#fff5d9; }
+  .feasibility-check.fail { border-left-color:#cf3939; background:#fbe5e3; }
+  .feasibility-check.na { border-left-color:#64748b; background:#eef2f5; }
+  .feasibility-check-title { display:flex; align-items:flex-start; gap:6px; color:#14283b; font-weight:700; }
+  .feasibility-check-title > span:first-child { flex:1; }
+  .feasibility-badge { flex:0 0 auto; padding:2px 6px; border-radius:999px; color:#fff; background:#64748b; font-size:10px; line-height:1.35; }
+  .feasibility-badge.ok { background:#078453; }
+  .feasibility-badge.marginal { background:#b56a00; }
+  .feasibility-badge.fail { background:#c92d2d; }
+  .feasibility-detail { margin-top:7px; color:#486273; font-size:12px; line-height:1.4; }
+  .feasibility-info-button { width:19px; height:19px; flex:0 0 auto; padding:0; border-radius:50%; color:#075985; border-color:#8abbd4; background:#fff; font:700 11px/17px Georgia,serif; }
+  .feasibility-info-popup { position:fixed; z-index:30; width:min(390px,calc(100vw - 24px)); padding:13px; border:1px solid #8abbd4; border-radius:8px; color:#253d50; background:#fff; box-shadow:0 8px 28px #10263a38; font-size:12px; line-height:1.45; }
+  .feasibility-info-popup[hidden] { display:none; }
+  .feasibility-info-popup h3 { margin:0 26px 6px 0; color:#004f91; font-size:14px; }
+  .feasibility-info-popup p { margin:6px 0; }
+  .feasibility-info-popup .reference { padding-top:7px; border-top:1px solid #d8e3ea; color:#516879; }
+  .feasibility-info-popup a { color:#005daa; font-weight:700; }
+  .feasibility-info-close { position:absolute; right:8px; top:8px; width:24px; height:24px; padding:0; border:0; color:#496477; background:transparent; font-size:18px; }
+  @media (max-width:1100px) { .feasibility-checks { grid-template-columns:repeat(2,minmax(220px,1fr)); } }
   .connection-state { display:flex; align-items:center; gap:7px; margin:7px 0; padding:7px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; font-size:12px; }
   .connection-dot { width:10px; height:10px; flex:0 0 auto; border-radius:50%; background:#8793a0; box-shadow:0 0 0 3px #8793a022; }
   .connection-state.connected .connection-dot { background:#0b7a53; box-shadow:0 0 0 3px #0b7a5322; }
@@ -305,6 +349,18 @@
       </div>
     </details>
 
+    <details id="feasibilityPanel" class="section panel">
+      <summary>Feasibility checks</summary><div class="panel-body">
+        <p>Run the HYDRALAB practical-limit and facility-envelope checks for every project wave condition using the current Project Setup scale and bathymetry.</p>
+        <div id="feasibilityProjectMeta" class="feasibility-panel-meta">Open a project and set its scale before running.</div>
+        <div class="feasibility-inputs">
+          <div class="field"><label for="feasibilityHmaxFactor">H<sub>max</sub> / H<sub>s</sub></label><input id="feasibilityHmaxFactor" type="number" min="1" max="4" step="0.01" value="2"></div>
+          <div class="field"><label for="feasibilityArmourDn50">Armour D<sub>n50</sub> (optional mm)</label><input id="feasibilityArmourDn50" type="number" min="0.1" max="1000" step="0.1" placeholder="Not assessed"></div>
+        </div>
+        <div class="row"><button id="runFeasibilityChecks" class="primary grow" type="button">Run</button></div>
+      </div>
+    </details>
+
     <details id="localWaveModelPanel" class="section panel">
       <summary>Wave transformation</summary><div class="panel-body">
         <div id="modelConnectionState" class="connection-state"><span class="connection-dot"></span><span id="modelConnectionText">Checking local helper…</span></div>
@@ -391,6 +447,20 @@
         <div class="achievable-chart-layout"><svg id="achievableChart" role="img" aria-label="Peak period versus significant wave height"></svg><aside id="achievableLegend" class="achievable-legend" aria-label="Graph legend"></aside></div>
       </div>
     </section>
+    <section id="feasibilityView" aria-label="Model feasibility check results">
+      <div class="feasibility-card">
+        <header class="feasibility-header"><div><h2>Feasibility checks</h2><p id="feasibilitySubtitle">Run the checks from the Model Design controls.</p></div><button id="closeFeasibilityView" type="button">Back to CAD</button></header>
+        <div id="feasibilitySummary" class="feasibility-summary"></div>
+        <div id="feasibilityResults"></div>
+      </div>
+      <aside id="feasibilityInfoPopup" class="feasibility-info-popup" role="dialog" aria-modal="false" hidden>
+        <button id="feasibilityInfoClose" class="feasibility-info-close" type="button" aria-label="Close reference information">×</button>
+        <h3 id="feasibilityInfoTitle"></h3>
+        <div id="feasibilityInfoBody"></div>
+        <p id="feasibilityInfoReference" class="reference"></p>
+        <a id="feasibilityInfoLink" href="#" target="_blank" rel="noopener">Open reference PDF</a>
+      </aside>
+    </section>
     <div class="placement-message" id="placementMessage">Click the CAD drawing to place the bathymetry reference point</div>
     <svg id="drawing" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" aria-label="Wave flume CAD drawing">
       <rect id="canvasBackground" fill="#ffffff"></rect>
@@ -442,6 +512,19 @@ const DEFAULT_WAVE_FILE = "wave_conditions.csv";
 const HRW_SPECS_2026 = JSON.parse(document.getElementById("hrwSpecs2026Data").textContent);
 const HRW_SPEC_COLOURS = ["#005daa","#2b7abd","#70a5d7","#0f766e","#7c3aed","#b45309","#be123c","#475569"];
 const DEFAULT_HRW_DEPTHS = ["0.6 m","0.9 m"];
+const FEASIBILITY_FACILITIES = {
+  flume_0_9m:{name:"0.9 m wave flume",maxDepthM:0.80,maxWaveHeightM:0.25},
+  flume_1_2m:{name:"1.2 m wave flume",maxDepthM:1.00,maxWaveHeightM:0.30},
+  flume_3m:{name:"3 m wave flume",maxDepthM:1.20,maxWaveHeightM:0.35},
+  wave_basin:{name:"Wave basin",maxDepthM:0.80,maxWaveHeightM:0.25}
+};
+const FEASIBILITY_REFERENCES = {
+  modellingLimits:{documentId:"hydralab-breakwaters",page:23,citation:"Wolters et al. / HYDRALAB III (2007), Guidelines for Physical Model Testing of Breakwaters, §3.6.5, document page 23.",body:"HYDRALAB gives practical lower model limits of 50 mm water depth and 50 mm design wave height (with 20–30 mm as the general wave-height lower range)."},
+  waveScale:{documentId:"hydralab-waves",page:7,citation:"Kirkegaard et al. / HYDRALAB III (2007), Guidelines for Wave Modelling in Flumes and Basins, §4.2, document page 4 (PDF page 7).",body:"Capillary effects should remain insignificant. HYDRALAB recommends a model wavelength of at least 0.3 m, corresponding to a model wave period of about 0.4 s."},
+  bathymetry:{documentId:"hydralab-breakwaters",page:13,citation:"Wolters et al. / HYDRALAB III (2007), Guidelines for Physical Model Testing of Breakwaters, §3.3, document page 13.",body:"The deeper paddle section should have h/Hₛ greater than 3. The modelled bathymetry after the transition slope should normally extend more than 3–5 local wavelengths to reproduce shoaling and breaking."},
+  facility:{documentId:"hydralab-waves",page:7,citation:"Kirkegaard et al. / HYDRALAB III (2007), Guidelines for Wave Modelling in Flumes and Basins, §4.2, document page 4 (PDF page 7).",body:"Scale selection is constrained by facility dimensions and wavemaker capacity. The numerical working limits shown here are the indicative facility presets carried over from the Physical Modelling Toolbox and should be checked against current paddle performance data."},
+  reynolds:{documentId:"hydralab-breakwaters",page:20,citation:"Wolters et al. / HYDRALAB III (2007), Guidelines for Physical Model Testing of Breakwaters, §3.6.2–3.6.3, document page 20 (after Dai & Kamel, 1969).",body:"For rubble-mound armour, fully turbulent flow through the armour is considered reasonably preserved when Reᴅ exceeds 30,000. This check requires a model Dₙ₅₀ value."}
+};
 const FLUME_FLOOR_Y = 1701.56;
 const PADDLE_FACE_X = 6871.70;
 const FLUME_WATER_X_MIN = 4034.61;
@@ -487,6 +570,10 @@ let achievableScaleMax = 40;
 let achievableFocusScale = 25;
 let activeHrwDepths = new Set(DEFAULT_HRW_DEPTHS);
 let activeAchievableConditionIds = new Set();
+let projectContext = {scaleDenominator:null,facilityId:"",facilityName:""};
+let referenceBaseUrl = "";
+let feasibilityHmaxFactor = 2;
+let feasibilityArmourDn50Mm = null;
 let activeFixedWaterLevels = new Set();
 let segmentTooltipPoint = null;
 let measureMode = false;
@@ -1708,6 +1795,105 @@ function wavelengthFromPeriodDepth(period,depth){
   return 2*Math.PI/((low+high)/2);
 }
 
+function updateFeasibilityProjectMeta(){
+  const scale=Number(projectContext.scaleDenominator),facility=FEASIBILITY_FACILITIES[projectContext.facilityId];
+  if(!(scale>0)){$("feasibilityProjectMeta").textContent="Set the project scale in Project Setup before running.";return;}
+  const facilityName=projectContext.facilityName||facility?.name||"Facility not set";
+  $("feasibilityProjectMeta").textContent=`Project scale 1:${fmt(scale,scale%1?2:0)} · ${facilityName} · ${waveConditions.length} wave condition${waveConditions.length===1?"":"s"}`;
+}
+
+function feasibilityStatus(ok,marginal){return ok?"ok":marginal?"marginal":"fail";}
+
+function feasibilityCheck(title,status,detail,referenceKey){return {title,status,detail,referenceKey};}
+
+function closeFeasibilityInfo(){
+  $("feasibilityInfoPopup").hidden=true;
+}
+
+function showFeasibilityInfo(button,check){
+  const reference=FEASIBILITY_REFERENCES[check.referenceKey],popup=$("feasibilityInfoPopup");
+  $("feasibilityInfoTitle").textContent=check.title.replace(/<[^>]+>/g,"");
+  $("feasibilityInfoBody").textContent=reference.body;
+  $("feasibilityInfoReference").textContent=reference.citation;
+  const link=$("feasibilityInfoLink");
+  link.href=referenceBaseUrl?`${referenceBaseUrl}/api/reference-material/${encodeURIComponent(reference.documentId)}#page=${reference.page}`:"#";
+  link.textContent=`Open reference PDF at page ${reference.page}`;
+  link.hidden=!referenceBaseUrl;
+  popup.hidden=false;
+  const rect=button.getBoundingClientRect(),popupWidth=Math.min(390,window.innerWidth-24);
+  const left=Math.max(12,Math.min(window.innerWidth-popupWidth-12,rect.left-popupWidth+rect.width));
+  popup.style.left=`${left}px`;popup.style.top=`${Math.max(12,Math.min(window.innerHeight-260,rect.bottom+7))}px`;
+}
+
+function renderFeasibilityCheck(check){
+  const card=document.createElement("article");card.className=`feasibility-check ${check.status}`;
+  const header=document.createElement("div");header.className="feasibility-check-title";
+  const title=document.createElement("span");title.innerHTML=check.title;
+  const info=document.createElement("button");info.type="button";info.className="feasibility-info-button";info.textContent="i";info.setAttribute("aria-label",`Reference for ${title.textContent}`);info.addEventListener("click",event=>{event.stopPropagation();showFeasibilityInfo(info,check);});
+  const badge=document.createElement("span");badge.className=`feasibility-badge ${check.status}`;badge.textContent={ok:"OK",marginal:"MARGINAL",fail:"FAIL",na:"NOT ASSESSED"}[check.status];
+  const detail=document.createElement("div");detail.className="feasibility-detail";detail.innerHTML=check.detail;
+  header.append(title,info,badge);card.append(header,detail);return card;
+}
+
+function runFeasibilityChecks(){
+  closeFeasibilityInfo();
+  const scale=Number(projectContext.scaleDenominator),hmaxFactor=Number($("feasibilityHmaxFactor").value),dnText=$("feasibilityArmourDn50").value.trim(),dn50Mm=dnText===""?null:Number(dnText);
+  if(!(scale>0)){setStatus("Set a project scale in Project Setup before running feasibility checks.","error");return;}
+  if(!waveConditions.length){setStatus("Add design wave conditions in Project Setup before running feasibility checks.","error");return;}
+  if(bathy.length<2){setStatus("Load at least two bathymetry points before running feasibility checks.","error");return;}
+  if(!(hmaxFactor>=1&&hmaxFactor<=4)){setStatus("Hmax / Hs must be between 1 and 4.","error");return;}
+  if(dn50Mm!==null&&!(dn50Mm>=0.1&&dn50Mm<=1000)){setStatus("Armour Dn50 must be between 0.1 and 1,000 model mm, or left blank.","error");return;}
+  feasibilityHmaxFactor=hmaxFactor;feasibilityArmourDn50Mm=dn50Mm;
+  const facility=FEASIBILITY_FACILITIES[projectContext.facilityId]||null;
+  const chainages=bathy.map(point=>point.chainage).filter(Number.isFinite),bathyPrototypeM=Math.max(...chainages)-Math.min(...chainages),bathyModelM=bathyPrototypeM/scale;
+  const floorElevation=anchor&&scaleDenominator>0?referencePoint().elevation+(FLUME_FLOOR_Y-anchor.y)*scaleDenominator/1000:null;
+  const allResults=[];
+  for(const condition of waveConditions){
+    const hsModelM=condition.waveHeight/scale,tpModelS=condition.period/Math.sqrt(scale),localPrototypeDepth=condition.waterLevel-condition.statsDepth,localModelDepthM=localPrototypeDepth/scale;
+    const wavelengthM=wavelengthFromPeriodDepth(tpModelS,localModelDepthM),hmaxModelM=hmaxFactor*hsModelM;
+    const paddleModelDepthM=Number.isFinite(floorElevation)?(condition.waterLevel-floorElevation)/scale:NaN;
+    const reynolds=dn50Mm===null?NaN:(dn50Mm/1000)*Math.sqrt(GRAVITY*hsModelM)/1e-6;
+    const checks=[];
+    checks.push(feasibilityCheck("Water depth &gt; 50 mm",feasibilityStatus(localModelDepthM>=0.05,localModelDepthM>=0.04),`Model depth at the wave-stats location = ${fmt(localModelDepthM*1000,0)} mm (limit 50 mm).`,"modellingLimits"));
+    checks.push(feasibilityCheck("Offshore wave height &gt; 50 mm",feasibilityStatus(hsModelM>=0.05,hsModelM>=0.03),`H<sub>s,model</sub> = ${fmt(hsModelM*1000,0)} mm (design limit 50 mm; general measured limit 20–30 mm).`,"modellingLimits"));
+    checks.push(feasibilityCheck("Wavelength &gt; 300 mm",feasibilityStatus(wavelengthM>=0.30,wavelengthM>=0.25),`L<sub>p</sub> = ${fmt(wavelengthM*1000,0)} mm at the wave-stats depth (limit 300 mm).`,"waveScale"));
+    checks.push(feasibilityCheck("Wave period &gt; 0.4 s",feasibilityStatus(tpModelS>=0.4,tpModelS>=0.35),`T<sub>p,model</sub> = ${fmt(tpModelS,2)} s (limit 0.4 s).`,"waveScale"));
+    checks.push(Number.isFinite(paddleModelDepthM)
+      ? feasibilityCheck("Paddle depth ≥ 3×H<sub>s</sub>",feasibilityStatus(paddleModelDepthM>=3*hsModelM,paddleModelDepthM>=2.5*hsModelM),`Available paddle depth ${fmt(paddleModelDepthM*1000,0)} mm; need ${fmt(3*hsModelM*1000,0)} mm.`,"bathymetry")
+      : feasibilityCheck("Paddle depth ≥ 3×H<sub>s</sub>","na","Set chainage 0 in the CAD drawing so the flume-floor elevation can be derived.","bathymetry"));
+    checks.push(facility
+      ? feasibilityCheck("Wave height within paddle limit",feasibilityStatus(hmaxModelM<=facility.maxWaveHeightM,hsModelM<=facility.maxWaveHeightM),`H<sub>max</sub> = ${fmt(hmaxModelM*1000,0)} mm vs indicative ${fmt(facility.maxWaveHeightM*1000,0)} mm paddle limit.`,"facility")
+      : feasibilityCheck("Wave height within paddle limit","na","Select a recognised facility in Project Setup.","facility"));
+    checks.push(facility&&Number.isFinite(paddleModelDepthM)
+      ? feasibilityCheck("Water fits in flume depth",feasibilityStatus(paddleModelDepthM+hmaxModelM/2<=facility.maxDepthM,paddleModelDepthM<=facility.maxDepthM),`Need d + H<sub>max</sub>/2 = ${fmt((paddleModelDepthM+hmaxModelM/2)*1000,0)} mm ≤ ${fmt(facility.maxDepthM*1000,0)} mm.`,"facility")
+      : feasibilityCheck("Water fits in flume depth","na","Set chainage 0 and select a recognised facility to assess available freeboard.","facility"));
+    checks.push(feasibilityCheck("≥ 3 wavelengths of bathymetry",feasibilityStatus(bathyModelM>=3*wavelengthM,bathyModelM>=2*wavelengthM),`Available modelled bathymetry span ${fmt(bathyModelM,2)} m vs 3×L<sub>p</sub> = ${fmt(3*wavelengthM,2)} m.`,"bathymetry"));
+    checks.push(dn50Mm===null
+      ? feasibilityCheck("Armour flow turbulent (Re<sub>D</sub> &gt; 3×10<sup>4</sup>)","na","Enter an optional model armour D<sub>n50</sub> in the Feasibility checks panel to calculate Re<sub>D</sub>.","reynolds")
+      : feasibilityCheck("Armour flow turbulent (Re<sub>D</sub> &gt; 3×10<sup>4</sup>)",feasibilityStatus(reynolds>=30000,reynolds>=10000),`Re<sub>D</sub> = ${fmt(reynolds,0)} using D<sub>n50</sub> ${fmt(dn50Mm,1)} mm (limit 30,000).`,"reynolds"));
+    allResults.push({condition,hsModelM,tpModelS,localModelDepthM,checks});
+  }
+  const resultsRoot=$("feasibilityResults");resultsRoot.replaceChildren();
+  const counts={ok:0,marginal:0,fail:0,na:0};
+  allResults.forEach(result=>{
+    const section=document.createElement("section");section.className="feasibility-condition";
+    const header=document.createElement("header");header.className="feasibility-condition-header";
+    const title=document.createElement("h3");title.textContent=`Condition ${result.condition.conditionId}`;
+    const meta=document.createElement("small");meta.textContent=`Prototype Hₛ ${fmt(result.condition.waveHeight,2)} m · Tₚ ${fmt(result.condition.period,2)} s · WL ${fmt(result.condition.waterLevel,2)} m AHD | Model Hₛ ${fmt(result.hsModelM*1000,0)} mm · Tₚ ${fmt(result.tpModelS,2)} s`;
+    header.append(title,meta);const grid=document.createElement("div");grid.className="feasibility-checks";
+    result.checks.forEach(check=>{counts[check.status]++;grid.appendChild(renderFeasibilityCheck(check));});section.append(header,grid);resultsRoot.appendChild(section);
+  });
+  $("feasibilitySummary").replaceChildren(...[
+    `${allResults.length} condition${allResults.length===1?"":"s"}`,
+    `${counts.ok} passed`,`${counts.marginal} marginal`,`${counts.fail} failed`,`${counts.na} not assessed`
+  ].map(textValue=>{const span=document.createElement("span");span.textContent=textValue;return span;}));
+  const facilityName=projectContext.facilityName||facility?.name||"facility not set";
+  $("feasibilitySubtitle").textContent=`Project scale 1:${fmt(scale,scale%1?2:0)} · ${facilityName} · ${fmt(bathyPrototypeM,1)} m prototype bathymetry span · Hmax/Hs ${fmt(hmaxFactor,2)}.`;
+  document.body.dataset.waveView="feasibility";
+  setStatus(`Feasibility checks completed for ${allResults.length} condition${allResults.length===1?"":"s"}: ${counts.fail} failed and ${counts.marginal} marginal.`,counts.fail?"error":"success");
+  $("feasibilityView").scrollTop=0;
+}
+
 function svgElement(name,attributes={}){
   const element=document.createElementNS("http://www.w3.org/2000/svg",name);for(const [key,value] of Object.entries(attributes))element.setAttribute(key,value);return element;
 }
@@ -1798,6 +1984,7 @@ function createProjectState() {
     fixedWaterLevels:{enabledDepths:[...activeFixedWaterLevels].sort((a,b)=>a-b)},
     waveConditions:{filename:waveLoadedFilename,conditions:waveConditions.map(item=>({...item})),enabledIndices:[...activeWaveRows].sort((a,b)=>a-b)},
     achievableWaveConditions:{view:waveConditionsView,scaleMin:achievableScaleMin,scaleMax:achievableScaleMax,focusScale:achievableFocusScale,enabledHrwDepths:[...activeHrwDepths],enabledConditionIds:[...activeAchievableConditionIds]},
+    feasibilityChecks:{hmaxFactor:feasibilityHmaxFactor,armourDn50Mm:feasibilityArmourDn50Mm},
     localModel:{
       engine:$("modelEngine").value,
       toeChainage:Number($("seawallToeChainage").value),
@@ -1870,6 +2057,11 @@ function parseProjectState(text) {
   const enabledConditionIds=Array.isArray(rawAchievable.enabledConditionIds)?[...new Set(rawAchievable.enabledConditionIds.map(String).filter(id=>validConditionIds.has(id)))]:[];
   const achievable={view:rawAchievable.view==="achievable"?"achievable":"cad",scaleMin:achievableMin,scaleMax:achievableMax,focusScale:Math.max(achievableMin,Math.min(achievableMax,requestedFocus)),enabledHrwDepths,enabledConditionIds};
 
+  const rawFeasibility=data.feasibilityChecks&&typeof data.feasibilityChecks==="object"&&!Array.isArray(data.feasibilityChecks)?data.feasibilityChecks:{};
+  const hmaxFactor=projectNumber(rawFeasibility.hmaxFactor??2,"Feasibility Hmax / Hs factor",value=>value>=1&&value<=4);
+  const armourDn50Mm=rawFeasibility.armourDn50Mm===null||rawFeasibility.armourDn50Mm===undefined||rawFeasibility.armourDn50Mm===""?null:projectNumber(rawFeasibility.armourDn50Mm,"Feasibility armour Dn50",value=>value>=0.1&&value<=1000);
+  const feasibilityChecks={hmaxFactor,armourDn50Mm};
+
   const display=data.display&&typeof data.display==="object"&&!Array.isArray(data.display)?data.display:{};
   const colour=typeof display.bathymetryColour==="string"&&/^#[0-9a-f]{6}$/i.test(display.bathymetryColour)?display.bathymetryColour:"#e6532f";
   const lineWidth=projectNumber(display.bathymetryLineWidth??3,"Bathymetry line width",value=>value>=0.5&&value<=12);
@@ -1891,7 +2083,7 @@ function parseProjectState(text) {
     bathymetry:{filename:String(bathymetry.filename||"project bathymetry"),points},modelStructures:structures,
     placement:{scaleDenominator:importedScale,anchor:importedAnchor},
     display:{bathymetryVisible:display.bathymetryVisible!==false,pointMarkers:display.pointMarkers!==false,bathymetryColour:colour,bathymetryLineWidth:lineWidth,cadLineWidth,batterEnabled:display.batterEnabled===true,rightExtensionEnabled:display.rightExtensionEnabled===true,rightExtensionDistance:importedRightExtensionDistance},
-    fixedWaterLevels:{enabledDepths},waveConditions:{filename:String(rawWaves.filename||"project wave conditions"),conditions,enabledIndices},achievableWaveConditions:achievable,localModel,cadLayers,view:importedView
+    fixedWaterLevels:{enabledDepths},waveConditions:{filename:String(rawWaves.filename||"project wave conditions"),conditions,enabledIndices},achievableWaveConditions:achievable,feasibilityChecks,localModel,cadLayers,view:importedView
   };
 }
 
@@ -1902,6 +2094,7 @@ function applyProjectState(project,fileName) {
   waveConditions=project.waveConditions.conditions.map(item=>({...item}));waveLoadedFilename=project.waveConditions.filename;
   activeWaveRows=new Set(project.waveConditions.enabledIndices);activeFixedWaterLevels=new Set(project.fixedWaterLevels.enabledDepths);
   const achievable=project.achievableWaveConditions;waveConditionsView=achievable.view;achievableScaleMin=achievable.scaleMin;achievableScaleMax=achievable.scaleMax;achievableFocusScale=achievable.focusScale;activeHrwDepths=new Set(achievable.enabledHrwDepths);activeAchievableConditionIds=new Set(achievable.enabledConditionIds);
+  feasibilityHmaxFactor=project.feasibilityChecks.hmaxFactor;feasibilityArmourDn50Mm=project.feasibilityChecks.armourDn50Mm;
   scaleDenominator=project.placement.scaleDenominator;anchor=project.placement.anchor?{...project.placement.anchor}:null;batterEnabled=project.display.batterEnabled;rightExtensionEnabled=project.display.rightExtensionEnabled;rightExtensionDistance=project.display.rightExtensionDistance;
   $("scaleInput").value=String(scaleDenominator);$("scaleInput").classList.remove("invalid");
   $("anchorX").value=anchor?anchor.x.toFixed(3):"";$("anchorY").value=anchor?anchor.y.toFixed(3):"";
@@ -1909,6 +2102,7 @@ function applyProjectState(project,fileName) {
   $("lineColour").value=project.display.bathymetryColour;$("lineWidth").value=String(project.display.bathymetryLineWidth);$("cadLineWidth").value=String(project.display.cadLineWidth);
   $("rightExtensionDistance").value=rightExtensionDistance>0?String(rightExtensionDistance):"";$("rightExtensionDistance").classList.remove("invalid");
   $("achievableScaleMin").value=String(achievableScaleMin);$("achievableScaleMax").value=String(achievableScaleMax);$("achievableFocusScale").value=String(achievableFocusScale);
+  $("feasibilityHmaxFactor").value=String(feasibilityHmaxFactor);$("feasibilityArmourDn50").value=feasibilityArmourDn50Mm===null?"":String(feasibilityArmourDn50Mm);updateFeasibilityProjectMeta();
   document.documentElement.style.setProperty("--cad-stroke-width",`${project.display.cadLineWidth}px`);
   $("modelEngine").value=project.localModel.engine;$("seawallToeChainage").value=String(project.localModel.toeChainage);$("swanGridSpacing").value=String(project.localModel.gridSpacing);$("swanBreakingCoefficient").value=String(project.localModel.swanBreakingCoefficient);$("swashAnalysisPeriods").value=String(project.localModel.swashAnalysisPeriods);$("swashAnimationPeriods").value=String(project.localModel.swashAnimationPeriods);$("swashAnimationTimeBasis").value=project.localModel.swashAnimationTimeBasis;$("xbeachAnalysisPeriods").value=String(project.localModel.xBeachAnalysisPeriods);
   const layersByName=new Map(project.cadLayers.map(item=>[item.name,item.visible]));
@@ -2095,6 +2289,10 @@ window.addEventListener("message",event=>{
   if(event.data.type==="flumeworks:load-model-design"){
     if(modelJobRunning){window.parent.postMessage({type:"flumeworks:model-design-error",message:"Wait for the running wave model before changing projects."},"*");return;}
     try{
+      const context=event.data.projectContext&&typeof event.data.projectContext==="object"?event.data.projectContext:{};
+      const contextScale=Number(context.scaleDenominator);
+      projectContext={scaleDenominator:Number.isFinite(contextScale)&&contextScale>0?contextScale:null,facilityId:String(context.facilityId||""),facilityName:String(context.facilityName||"")};
+      try{const candidate=new URL(String(event.data.referenceBaseUrl||""));referenceBaseUrl=["127.0.0.1","localhost","::1"].includes(candidate.hostname)?candidate.origin:"";}catch{referenceBaseUrl="";}
       const rawState=event.data.state||flumeworksDefaultModelDesignState;
       if(!rawState)throw new Error("The embedded default Model Design is not ready.");
       const project=parseProjectState(JSON.stringify(rawState));
@@ -2112,6 +2310,13 @@ $("addModelStructure").addEventListener("click",addModelStructure);
 $("structureCsvFile").addEventListener("change",event=>{const file=event.target.files[0],structureId=pendingStructureCsvId;event.target.value="";pendingStructureCsvId=null;if(file&&structureId)loadStructureCsvFile(file,structureId);});
 $("reconnectModelService").addEventListener("click",checkModelService);
 $("runLocalModel").addEventListener("click",runLocalModel);
+$("runFeasibilityChecks").addEventListener("click",runFeasibilityChecks);
+$("closeFeasibilityView").addEventListener("click",()=>setWaveConditionsView("cad",true));
+$("feasibilityInfoClose").addEventListener("click",closeFeasibilityInfo);
+$("feasibilityView").addEventListener("click",event=>{if(event.target===$("feasibilityView"))closeFeasibilityInfo();});
+$("feasibilityHmaxFactor").addEventListener("input",event=>{const value=Number(event.target.value);if(value>=1&&value<=4)feasibilityHmaxFactor=value;});
+$("feasibilityArmourDn50").addEventListener("input",event=>{const textValue=event.target.value.trim(),value=Number(textValue);if(textValue==="")feasibilityArmourDn50Mm=null;else if(value>=0.1&&value<=1000)feasibilityArmourDn50Mm=value;});
+window.addEventListener("keydown",event=>{if(event.key==="Escape")closeFeasibilityInfo();});
 $("showWaveCadView").addEventListener("click",()=>setWaveConditionsView("cad",true));
 $("showAchievableView").addEventListener("click",()=>setWaveConditionsView("achievable",true));
 for(const id of ["achievableFocusScale","achievableScaleMin","achievableScaleMax"]){$(id).addEventListener("input",()=>{if(normaliseAchievableScaleControls())requestAchievableChartRender();});}
@@ -2153,7 +2358,7 @@ new ResizeObserver(()=>{refreshScreenSizedSymbols();if(waveConditionsView==="ach
 
 $("canvasBackground").setAttribute("x",metaView.x); $("canvasBackground").setAttribute("y",metaView.y); $("canvasBackground").setAttribute("width",metaView.width); $("canvasBackground").setAttribute("height",metaView.height);
 applyWorkspaceMode(new URLSearchParams(location.search).get("workspace"));
-initialiseLayers(); renderTable(); renderModelStructureList(); renderFixedWaterLevelList(); redrawFixedWaterLevels(); renderWaveConditionList(); setWaveConditionsView("cad"); resetView(); updatePlacementUI(); updateBatterUI(); updateRightExtensionUI(); updateMeasureUI(); renderMeasurement(); redrawBathymetry();
+initialiseLayers(); renderTable(); renderModelStructureList(); renderFixedWaterLevelList(); redrawFixedWaterLevels(); renderWaveConditionList(); setWaveConditionsView("cad"); resetView(); updatePlacementUI(); updateBatterUI(); updateRightExtensionUI(); updateMeasureUI(); renderMeasurement(); redrawBathymetry(); updateFeasibilityProjectMeta();
 flumeworksDefaultModelDesignState=createProjectState();
 if(window.parent!==window)window.parent.postMessage({type:"flumeworks:model-design-ready"},"*");
 setStatus(`Ready. ${CAD_META.entityCount || ""} CAD entities, embedded bathymetry, and ${waveConditions.length} wave conditions are available. Set chainage 0 to place the profile.`);

@@ -14,6 +14,15 @@ from .project_store import ProjectError, ProjectExistsError, ProjectLockedError
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 FRONTEND_ROOT = PACKAGE_ROOT / "frontend"
+REFERENCE_ROOT = PACKAGE_ROOT.parents[1] / "reference material"
+REFERENCE_DOCUMENTS = {
+    "hydralab-waves": REFERENCE_ROOT
+    / "HYDRALABIII"
+    / "DelNA3.1-1_HYDRALAB-III_G&BP_waves.pdf",
+    "hydralab-breakwaters": REFERENCE_ROOT
+    / "HYDRALABIII"
+    / "DelNA3.1-2_HYDRALAB-III_G&BP_breakwaters.pdf",
+}
 
 
 class ProjectCreateRequest(BaseModel):
@@ -135,6 +144,13 @@ def create_app(state: ApplicationState) -> FastAPI:
     @app.get("/api/bootstrap")
     def bootstrap() -> dict[str, object]:
         return state.bootstrap_payload()
+
+    @app.get("/api/reference-material/{document_id}")
+    def reference_material(document_id: str) -> FileResponse:
+        document = REFERENCE_DOCUMENTS.get(document_id)
+        if document is None or not document.is_file():
+            raise HTTPException(status_code=404, detail="Reference PDF is not available.")
+        return FileResponse(document, media_type="application/pdf")
 
     @app.post("/api/projects", status_code=201)
     def create_project(request: ProjectCreateRequest) -> dict[str, object]:

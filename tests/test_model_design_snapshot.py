@@ -9,7 +9,7 @@ from flumeworks.model_design import wave_model_service
 
 
 EXPECTED_HASHES = {
-    "wave_flume_bathymetry_viewer.html": "39f7583d30f378461f817ab61a360cff5280a2f0a347108c7a8895da30509444",
+    "wave_flume_bathymetry_viewer.html": "7b606e311384627abf3f32d91765cada43867d2e005b3d70ad17133b58641e11",
     "wave_model_service.py": "86ccaf3c952d30b73f13016e2793d4cf6ea288ad830f5ea19fd571877cb05005",
 }
 
@@ -23,7 +23,6 @@ def test_model_design_files_match_reviewed_snapshot() -> None:
         name: hashlib.sha256((root / name).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
         for name in EXPECTED_HASHES
     }
-
     assert actual == EXPECTED_HASHES
 
 
@@ -96,3 +95,18 @@ def test_achievable_wave_chart_uses_independent_froude_scaling() -> None:
     assert 'function modelFlumeDepthForScale(condition,modelScale)' in html
     assert '(condition.waterLevel-floorElevation)*1000/modelScale' in html
     assert '${fmt(depth,1)} mm depth (scale ${achievableFocusScale})' in html
+
+
+def test_feasibility_checks_use_project_context_and_linked_references() -> None:
+    viewer = Path(wave_model_service.__file__).resolve().parent / "wave_flume_bathymetry_viewer.html"
+    html = viewer.read_text(encoding="utf-8")
+
+    assert 'id="feasibilityPanel"' in html
+    assert 'id="feasibilityView"' in html
+    assert "function runFeasibilityChecks()" in html
+    assert "projectContext.scaleDenominator" in html
+    assert "condition.period/Math.sqrt(scale)" in html
+    assert "condition.waveHeight/scale" in html
+    assert "hydralab-waves" in html
+    assert "hydralab-breakwaters" in html
+    assert "#page=${reference.page}" in html

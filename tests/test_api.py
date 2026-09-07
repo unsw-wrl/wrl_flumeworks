@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from flumeworks import api as api_module
 from flumeworks.api import create_app
 from flumeworks.app_state import ApplicationState
 from flumeworks.settings import Settings
@@ -163,5 +164,20 @@ def test_frontend_shell_is_served(tmp_path: Path) -> None:
         assert 'id="welcomeProjectList"' in response.text
         assert "Create a project database" in response.text
         assert "Model Design" in response.text
+    finally:
+        state.shutdown()
+
+
+def test_reference_pdf_is_served_inline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    reference = tmp_path / "reference.pdf"
+    reference.write_bytes(b"%PDF-1.4\n% test reference\n")
+    monkeypatch.setitem(api_module.REFERENCE_DOCUMENTS, "test-reference", reference)
+    client, state = make_client(tmp_path)
+    try:
+        response = client.get("/api/reference-material/test-reference")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert response.content.startswith(b"%PDF-1.4")
+        assert client.get("/api/reference-material/not-listed").status_code == 404
     finally:
         state.shutdown()
