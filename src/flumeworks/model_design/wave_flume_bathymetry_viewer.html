@@ -63,16 +63,15 @@
   .bathy-layer { margin-top:8px; border:1px solid #f0b4a4; background:#fff8f5; border-radius:6px; padding:7px; }
   .structure-list { display:grid; gap:10px; }
   .structure-card { overflow:hidden; border:1px solid #bfd1dc; border-radius:7px; background:#fff; }
-  .structure-card-header { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:7px; align-items:center; padding:8px; background:#edf6fc; }
+  .structure-card-header { display:grid; grid-template-columns:auto auto minmax(0,1fr) auto auto; gap:6px; align-items:center; padding:8px; background:#edf6fc; }
   .structure-card-header input[type="text"] { min-width:0; width:100%; border:1px solid #aebfc9; border-radius:5px; padding:5px 7px; font-weight:700; }
   .structure-card-header input[type="color"] { width:34px; height:30px; }
-  .structure-card:not(.editing) .structure-card-header { grid-template-columns:auto minmax(0,1fr) auto; }
+  .structure-card:not(.editing) .structure-card-header { grid-template-columns:auto auto minmax(0,1fr) auto; }
   .structure-card:not(.editing) .structure-card-header input[type="text"], .structure-card:not(.editing) .structure-table input { border-color:transparent; background:transparent; color:var(--ink); }
   .structure-card:not(.editing) .structure-card-header input[type="color"] { opacity:.72; }
   .structure-delete, .structure-point-delete { display:grid; place-items:center; width:30px; height:30px; padding:0; color:var(--danger); }
   .structure-card-body { padding:8px; }
   .structure-card-body .file-name { margin:0 0 7px; }
-  .structure-edit-toggle { margin-left:auto; }
   .structure-table { max-height:210px; }
   .structure-table input { width:100%; min-width:75px; padding:4px 5px; border:1px solid #b9c4d0; border-radius:4px; text-align:right; }
   .structure-card.editing .structure-table th:last-child, .structure-card.editing .structure-table td:last-child { width:38px; text-align:center; }
@@ -1252,19 +1251,20 @@ function renderModelStructureList(){
     name.addEventListener("change",()=>{if(!name.value.trim())name.value=structure.name;});
     const colour=document.createElement("input");colour.type="color";colour.value=structure.colour;colour.disabled=!editing;colour.title="Structure colour";colour.setAttribute("aria-label",`${structure.name} colour`);
     colour.addEventListener("input",()=>{structure.colour=colour.value;redrawModelStructures();});
+    const edit=document.createElement("button");edit.type="button";edit.className=`structure-edit-toggle${editing?" primary":""}`;edit.textContent=editing?"Save":"Edit";edit.setAttribute("aria-label",`${editing?"Save":"Edit"} ${structure.name}`);
+    edit.addEventListener("click",()=>{structure.editing=!editing;renderModelStructureList();if(editing)setStatus(`${structure.name} is locked. Use Save project to write it to the .flumeworks file.`,"success");else $("modelStructureList").querySelector(`[data-structure-id="${structure.id}"] input[type="text"]`)?.focus();});
     const remove=document.createElement("button");remove.type="button";remove.className="structure-delete";remove.textContent="×";remove.title="Delete structure";remove.setAttribute("aria-label",`Delete ${structure.name}`);
     remove.addEventListener("click",()=>{if(!confirm(`Delete ${structure.name}?`))return;modelStructures=modelStructures.filter(item=>item.id!==structure.id);renderModelStructureList();redrawModelStructures();setStatus(`Deleted ${structure.name}.`);});
-    header.append(visible,name,colour);if(editing)header.appendChild(remove);
+    header.append(visible,colour,name,edit);if(editing)header.appendChild(remove);
 
     const body=document.createElement("div");body.className="structure-card-body";
     if(structure.filename){const file=document.createElement("div");file.className="file-name";file.textContent=`Loaded: ${structure.filename}`;file.title=structure.filename;body.appendChild(file);}
-    const actions=document.createElement("div");actions.className="row";
-    const load=document.createElement("button");load.type="button";load.textContent="Load CSV";load.hidden=!editing;load.addEventListener("click",()=>{pendingStructureCsvId=structure.id;$("structureCsvFile").click();});
-    const addPoint=document.createElement("button");addPoint.type="button";addPoint.className="primary grow";addPoint.textContent="+ Add point";addPoint.hidden=!editing;
-    addPoint.addEventListener("click",()=>{const previous=structure.points.at(-1);structure.points.push({chainage:previous?previous.chainage+1:0,elevation:previous?previous.elevation:0,sourceRow:structure.points.length+2});renderModelStructureList();redrawModelStructures();$("modelStructureList").querySelector(`[data-structure-id="${structure.id}"] tbody tr:last-child input`)?.focus();});
-    const edit=document.createElement("button");edit.type="button";edit.className=`structure-edit-toggle${editing?" primary":""}`;edit.textContent=editing?"Save":"Edit";edit.setAttribute("aria-label",`${editing?"Save":"Edit"} ${structure.name}`);
-    edit.addEventListener("click",()=>{structure.editing=!editing;renderModelStructureList();if(editing)setStatus(`${structure.name} is locked. Use Save project to write it to the .flumeworks file.`,"success");else $("modelStructureList").querySelector(`[data-structure-id="${structure.id}"] input[type="text"]`)?.focus();});
-    actions.append(load,addPoint,edit);body.appendChild(actions);
+    if(editing){const actions=document.createElement("div");actions.className="row";
+      const load=document.createElement("button");load.type="button";load.textContent="Load CSV";load.addEventListener("click",()=>{pendingStructureCsvId=structure.id;$("structureCsvFile").click();});
+      const addPoint=document.createElement("button");addPoint.type="button";addPoint.className="primary grow";addPoint.textContent="+ Add point";
+      addPoint.addEventListener("click",()=>{const previous=structure.points.at(-1);structure.points.push({chainage:previous?previous.chainage+1:0,elevation:previous?previous.elevation:0,sourceRow:structure.points.length+2});renderModelStructureList();redrawModelStructures();$("modelStructureList").querySelector(`[data-structure-id="${structure.id}"] tbody tr:last-child input`)?.focus();});
+      actions.append(load,addPoint);body.appendChild(actions);
+    }
 
     const tableWrap=document.createElement("div");tableWrap.className="table-wrap structure-table";
     const table=document.createElement("table"),head=document.createElement("thead"),headRow=document.createElement("tr");
