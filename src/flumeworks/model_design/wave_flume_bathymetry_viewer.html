@@ -66,6 +66,8 @@
   .structure-card-header { display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:7px; align-items:center; padding:8px; background:#edf6fc; }
   .structure-card-header input[type="text"] { min-width:0; width:100%; border:1px solid #aebfc9; border-radius:5px; padding:5px 7px; font-weight:700; }
   .structure-card-header input[type="color"] { width:34px; height:30px; }
+  .structure-card:not(.editing) .structure-card-header input[type="text"], .structure-card:not(.editing) .structure-table input { border-color:transparent; background:transparent; color:var(--ink); }
+  .structure-card:not(.editing) .structure-card-header input[type="color"] { opacity:.72; }
   .structure-delete, .structure-point-delete { display:grid; place-items:center; width:30px; height:30px; padding:0; color:var(--danger); }
   .structure-card-body { padding:8px; }
   .structure-card-body .file-name { margin:0 0 7px; }
@@ -1221,7 +1223,7 @@ function nextStructureId(){structureSequence+=1;return `model-structure-${Date.n
 
 function addModelStructure(){
   const number=modelStructures.length+1;
-  modelStructures.push({id:nextStructureId(),name:`Model structure ${number}`,visible:true,colour:STRUCTURE_COLOURS[(number-1)%STRUCTURE_COLOURS.length],filename:"",points:[]});
+  modelStructures.push({id:nextStructureId(),name:`Model structure ${number}`,visible:true,colour:STRUCTURE_COLOURS[(number-1)%STRUCTURE_COLOURS.length],filename:"",points:[],editing:true});
   renderModelStructureList();redrawModelStructures();
   setStatus(`Added Model structure ${number}. Add points manually or load a chainage/elevation CSV.`,"success");
 }
@@ -1238,14 +1240,15 @@ function renderModelStructureList(){
   const root=$("modelStructureList"),fragment=document.createDocumentFragment();
   if(!modelStructures.length){const empty=document.createElement("p");empty.className="empty";empty.textContent="No model structures added.";root.replaceChildren(empty);return;}
   modelStructures.forEach((structure,structureIndex)=>{
-    const card=document.createElement("section");card.className="structure-card";card.dataset.structureId=structure.id;
+    const editing=structure.editing===true;
+    const card=document.createElement("section");card.className=`structure-card${editing?" editing":""}`;card.dataset.structureId=structure.id;
     const header=document.createElement("div");header.className="structure-card-header";
     const visible=document.createElement("input");visible.type="checkbox";visible.checked=structure.visible;visible.title="Show or hide this structure";visible.setAttribute("aria-label",`Show ${structure.name}`);
     visible.addEventListener("change",()=>{structure.visible=visible.checked;redrawModelStructures();});
-    const name=document.createElement("input");name.type="text";name.value=structure.name;name.maxLength=120;name.setAttribute("aria-label",`Structure ${structureIndex+1} name`);
+    const name=document.createElement("input");name.type="text";name.value=structure.name;name.maxLength=120;name.readOnly=!editing;name.setAttribute("aria-label",`Structure ${structureIndex+1} name`);
     name.addEventListener("input",()=>{if(name.value.trim()){structure.name=name.value.trim();visible.setAttribute("aria-label",`Show ${structure.name}`);}});
     name.addEventListener("change",()=>{if(!name.value.trim())name.value=structure.name;});
-    const colour=document.createElement("input");colour.type="color";colour.value=structure.colour;colour.title="Structure colour";colour.setAttribute("aria-label",`${structure.name} colour`);
+    const colour=document.createElement("input");colour.type="color";colour.value=structure.colour;colour.disabled=!editing;colour.title="Structure colour";colour.setAttribute("aria-label",`${structure.name} colour`);
     colour.addEventListener("input",()=>{structure.colour=colour.value;redrawModelStructures();});
     const remove=document.createElement("button");remove.type="button";remove.className="structure-delete";remove.textContent="×";remove.title="Delete structure";remove.setAttribute("aria-label",`Delete ${structure.name}`);
     remove.addEventListener("click",()=>{if(!confirm(`Delete ${structure.name}?`))return;modelStructures=modelStructures.filter(item=>item.id!==structure.id);renderModelStructureList();redrawModelStructures();setStatus(`Deleted ${structure.name}.`);});
@@ -1254,10 +1257,12 @@ function renderModelStructureList(){
     const body=document.createElement("div");body.className="structure-card-body";
     if(structure.filename){const file=document.createElement("div");file.className="file-name";file.textContent=`Loaded: ${structure.filename}`;file.title=structure.filename;body.appendChild(file);}
     const actions=document.createElement("div");actions.className="row";
-    const load=document.createElement("button");load.type="button";load.textContent="Load CSV";load.addEventListener("click",()=>{pendingStructureCsvId=structure.id;$("structureCsvFile").click();});
-    const addPoint=document.createElement("button");addPoint.type="button";addPoint.className="primary grow";addPoint.textContent="+ Add point";
+    const load=document.createElement("button");load.type="button";load.textContent="Load CSV";load.hidden=!editing;load.addEventListener("click",()=>{pendingStructureCsvId=structure.id;$("structureCsvFile").click();});
+    const addPoint=document.createElement("button");addPoint.type="button";addPoint.className="primary grow";addPoint.textContent="+ Add point";addPoint.hidden=!editing;
     addPoint.addEventListener("click",()=>{const previous=structure.points.at(-1);structure.points.push({chainage:previous?previous.chainage+1:0,elevation:previous?previous.elevation:0,sourceRow:structure.points.length+2});renderModelStructureList();redrawModelStructures();$("modelStructureList").querySelector(`[data-structure-id="${structure.id}"] tbody tr:last-child input`)?.focus();});
-    actions.append(load,addPoint);body.appendChild(actions);
+    const edit=document.createElement("button");edit.type="button";edit.className=editing?"primary":"";edit.textContent=editing?"Save":"Edit";edit.setAttribute("aria-label",`${editing?"Save":"Edit"} ${structure.name}`);
+    edit.addEventListener("click",()=>{structure.editing=!editing;renderModelStructureList();if(editing)setStatus(`${structure.name} is locked. Use Save project to write it to the .flumeworks file.`,"success");else $("modelStructureList").querySelector(`[data-structure-id="${structure.id}"] input[type="text"]`)?.focus();});
+    actions.append(load,addPoint,edit);body.appendChild(actions);
 
     const tableWrap=document.createElement("div");tableWrap.className="table-wrap structure-table";
     const table=document.createElement("table"),head=document.createElement("thead"),headRow=document.createElement("tr");
@@ -1266,8 +1271,8 @@ function renderModelStructureList(){
     if(!structure.points.length){const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=4;cell.textContent="No points yet.";cell.className="empty";row.appendChild(cell);rows.appendChild(row);}
     structure.points.forEach((point,pointIndex)=>{
       const row=document.createElement("tr"),number=document.createElement("td");number.textContent=String(pointIndex+1);row.appendChild(number);
-      for(const key of ["chainage","elevation"]){const cell=document.createElement("td"),input=document.createElement("input");input.type="number";input.step="any";input.value=String(point[key]);input.setAttribute("aria-label",`${structure.name} point ${pointIndex+1} ${key}`);input.addEventListener("input",()=>updateStructurePoint(structure,pointIndex,key,input));input.addEventListener("change",()=>{if(input.classList.contains("invalid")){input.value=String(structure.points[pointIndex][key]);input.classList.remove("invalid");}});cell.appendChild(input);row.appendChild(cell);}
-      const action=document.createElement("td"),deletePoint=document.createElement("button");deletePoint.type="button";deletePoint.className="structure-point-delete";deletePoint.textContent="×";deletePoint.title="Delete point";deletePoint.setAttribute("aria-label",`Delete ${structure.name} point ${pointIndex+1}`);deletePoint.addEventListener("click",()=>{structure.points.splice(pointIndex,1);renderModelStructureList();redrawModelStructures();});action.appendChild(deletePoint);row.appendChild(action);rows.appendChild(row);
+      for(const key of ["chainage","elevation"]){const cell=document.createElement("td"),input=document.createElement("input");input.type="number";input.step="any";input.value=String(point[key]);input.readOnly=!editing;input.setAttribute("aria-label",`${structure.name} point ${pointIndex+1} ${key}`);input.addEventListener("input",()=>updateStructurePoint(structure,pointIndex,key,input));input.addEventListener("change",()=>{if(input.classList.contains("invalid")){input.value=String(structure.points[pointIndex][key]);input.classList.remove("invalid");}});cell.appendChild(input);row.appendChild(cell);}
+      const action=document.createElement("td"),deletePoint=document.createElement("button");deletePoint.type="button";deletePoint.className="structure-point-delete";deletePoint.hidden=!editing;deletePoint.textContent="×";deletePoint.title="Delete point";deletePoint.setAttribute("aria-label",`Delete ${structure.name} point ${pointIndex+1}`);deletePoint.addEventListener("click",()=>{structure.points.splice(pointIndex,1);renderModelStructureList();redrawModelStructures();});action.appendChild(deletePoint);row.appendChild(action);rows.appendChild(row);
     });
     table.appendChild(rows);tableWrap.appendChild(table);body.appendChild(tableWrap);card.append(header,body);fragment.appendChild(card);
   });
@@ -1630,7 +1635,7 @@ function parseProjectState(text) {
     const structurePoints=rawStructurePoints.map((point,pointIndex)=>{projectObject(point,`${name} point ${pointIndex+1}`);return {chainage:projectNumber(point.chainage,`${name} point ${pointIndex+1} chainage`),elevation:projectNumber(point.elevation,`${name} point ${pointIndex+1} elevation`),sourceRow:Number.isFinite(Number(point.sourceRow))?Number(point.sourceRow):pointIndex+2};});
     const colour=typeof structure.colour==="string"&&/^#[0-9a-f]{6}$/i.test(structure.colour)?structure.colour:STRUCTURE_COLOURS[structureIndex%STRUCTURE_COLOURS.length];
     const candidateId=String(structure.id||"");let id=/^[a-zA-Z0-9_-]+$/.test(candidateId)?candidateId:`imported-structure-${structureIndex+1}`;while(structureIds.has(id))id=`${id}-${structureIndex+1}`;structureIds.add(id);
-    return {id,name,visible:structure.visible!==false,colour,filename:String(structure.filename||""),points:structurePoints};
+    return {id,name,visible:structure.visible!==false,colour,filename:String(structure.filename||""),points:structurePoints,editing:false};
   });
 
   const placement=projectObject(data.placement,"Placement");
