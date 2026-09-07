@@ -56,6 +56,7 @@ class ApplicationState:
         self._source_path: Path | None = None
         self._lease: ProjectLease | None = None
         self._dirty = False
+        self._last_saved_at: str | None = None
         self._lease_error = ""
         self._lock = threading.RLock()
         self._stop_heartbeat = threading.Event()
@@ -100,6 +101,12 @@ class ApplicationState:
         self._source_path = source_path
         self._lease = lease
         self._lease_error = ""
+        try:
+            self._last_saved_at = datetime.fromtimestamp(
+                source_path.stat().st_mtime
+            ).astimezone().isoformat()
+        except OSError:
+            self._last_saved_at = None
         self._record_run(database)
         self._dirty = True
         self.recents.add(database, source_path)
@@ -270,6 +277,7 @@ class ApplicationState:
                 self._dirty = False
             if self._lease:
                 self._lease.refresh()
+            self._last_saved_at = datetime.now().astimezone().isoformat()
             self.recents.add(database, self._source_path)
             return self.current_payload()
 
@@ -300,6 +308,7 @@ class ApplicationState:
             self._source_path = None
             self._lease = None
             self._dirty = False
+            self._last_saved_at = None
             self._lease_error = ""
 
     def current_payload(self) -> dict[str, Any] | None:
@@ -313,6 +322,7 @@ class ApplicationState:
                 "designConditions": self._current.design_conditions(),
                 "modelDesignState": self._current.model_design_state(),
                 "workingPath": str(self._current.path),
+                "sourceSavedAt": self._last_saved_at,
                 "dirty": self._dirty,
                 "lockPath": str(self._lease.path) if self._lease else "",
                 "lockHealthy": bool(self._lease and self._lease.acquired and not self._lease_error),

@@ -41,6 +41,7 @@ def test_local_working_copy_save_backup_and_close(tmp_path: Path) -> None:
         assert source.is_file()
         assert working.is_file() and working != source
         assert lock.is_file()
+        assert current["sourceSavedAt"]
 
         state.add_design_condition(condition_number="4", target_hs_m=6.9)
         state.save_model_design(
@@ -55,6 +56,8 @@ def test_local_working_copy_save_backup_and_close(tmp_path: Path) -> None:
 
         saved = state.save_current()
         assert saved["dirty"] is False
+        assert saved["sourceSavedAt"]
+        assert saved["sourceSavedAt"] >= current["sourceSavedAt"]
         with closing(sqlite3.connect(source)) as connection:
             assert connection.execute("SELECT COUNT(*) FROM design_condition").fetchone()[0] == 1
             assert connection.execute("SELECT COUNT(*) FROM model_design_state").fetchone()[0] == 1

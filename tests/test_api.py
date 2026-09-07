@@ -118,6 +118,7 @@ def test_project_model_design_save_and_backup_workflow(tmp_path: Path) -> None:
         saved = client.post("/api/projects/save")
         assert saved.status_code == 200
         assert saved.json()["currentProject"]["dirty"] is False
+        assert saved.json()["currentProject"]["sourceSavedAt"]
 
         backup = client.post("/api/projects/backup")
         assert backup.status_code == 200
@@ -149,6 +150,7 @@ def test_frontend_shell_is_served(tmp_path: Path) -> None:
         assert "Generate backup" in response.text
         assert "Project options" in response.text
         assert "Save project" in response.text
+        assert "Last Saved: —" in response.text
         assert "Create a project database" in response.text
         assert "Model Design" in response.text
     finally:

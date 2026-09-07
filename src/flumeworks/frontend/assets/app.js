@@ -338,6 +338,7 @@ function renderCurrentProject() {
   const current = bootstrap.currentProject, visible = Boolean(current && current.project);
   $("currentProjectCard").hidden = !visible; $("conditionCard").hidden = !visible; $("noProjectCard").hidden = visible;
   $("saveProject").disabled = !visible; $("backupProject").disabled = !visible; $("closeProject").disabled = !visible;
+  $("lastSaved").textContent = visible && current.sourceSavedAt ? `Last Saved: ${new Date(current.sourceSavedAt).toLocaleString()}` : "Last Saved: —";
   const identity = visible ? current.project.uuid : "__none__";
   if (identity !== panelProjectIdentity) { resetProjectEditing(); panelProjectIdentity = identity; }
   if (!visible) { $("activeProjectBadge").textContent = "No project open"; resetConditionEditing(); resetProjectEditing(); return; }
